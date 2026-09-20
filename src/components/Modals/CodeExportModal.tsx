@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
-import { generatePythonCode, generateTypeScriptCode } from '../../utils/codeGenerator';
+import { generatePythonCode, generateTypeScriptCode, generateOpenRouterCode } from '../../utils/codeGenerator';
 import { X, Copy, Check, Code2 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -11,7 +11,7 @@ interface CodeExportModalProps {
 
 export function CodeExportModal({ isOpen, onClose }: CodeExportModalProps) {
   const { nodes, edges, t } = useWorkflowStore();
-  const [activeTab, setActiveTab] = useState<'python' | 'typescript' | 'json'>('python');
+  const [activeTab, setActiveTab] = useState<'python' | 'openrouter' | 'typescript' | 'json'>('python');
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -19,6 +19,8 @@ export function CodeExportModal({ isOpen, onClose }: CodeExportModalProps) {
   let codeContent = '';
   if (activeTab === 'python') {
     codeContent = generatePythonCode(nodes, edges);
+  } else if (activeTab === 'openrouter') {
+    codeContent = generateOpenRouterCode(nodes, edges);
   } else if (activeTab === 'typescript') {
     codeContent = generateTypeScriptCode(nodes, edges);
   } else {
@@ -53,7 +55,7 @@ export function CodeExportModal({ isOpen, onClose }: CodeExportModalProps) {
 
         {/* Tabs */}
         <div className="p-4 bg-[#0F1118] border-b border-[#282D3D] flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setActiveTab('python')}
               className={clsx(
@@ -64,6 +66,17 @@ export function CodeExportModal({ isOpen, onClose }: CodeExportModalProps) {
               )}
             >
               {t.exportModal.tabPython}
+            </button>
+            <button
+              onClick={() => setActiveTab('openrouter')}
+              className={clsx(
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                activeTab === 'openrouter'
+                  ? 'bg-primary text-white font-bold'
+                  : 'bg-[#151821] text-gray-400 hover:text-white'
+              )}
+            >
+              {t.exportModal.tabOpenRouter}
             </button>
             <button
               onClick={() => setActiveTab('typescript')}
