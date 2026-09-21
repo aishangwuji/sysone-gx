@@ -172,7 +172,7 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
                   {qAns?.noul !== undefined && (
                     <div className="space-y-0.5">
                       <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-gray-400">校准概率 (Noul):</span>
+                        <span className="text-gray-400">校准概率：</span>
                         <span className={`font-mono font-bold ${
                           qAns.noul >= 0.7
                             ? 'text-emerald-400'

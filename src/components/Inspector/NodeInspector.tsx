@@ -503,7 +503,7 @@ export function NodeInspector() {
                         const newCriteria = { ...selectedQ.criteria, true: parsed };
                         updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
                       }}
-                      placeholder="判定为真 (Yes) 的标准描述或 JSON"
+                      placeholder="判定为真的标准描述或 JSON"
                       className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300 mt-1"
                     />
                   </div>
@@ -517,7 +517,7 @@ export function NodeInspector() {
                         const newCriteria = { ...selectedQ.criteria, false: parsed };
                         updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
                       }}
-                      placeholder="判定为假 (No) 的标准描述或 JSON"
+                      placeholder="判定为假的标准描述或 JSON"
                       className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300 mt-1"
                     />
                   </div>
