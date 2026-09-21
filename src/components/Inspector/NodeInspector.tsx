@@ -1,8 +1,36 @@
 import React from 'react';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
-import { BatchNodeData, ActionNodeData } from '../../types/workflow';
+import { BatchNodeData, ActionNodeData, EntryType } from '../../types/workflow';
 import { ShieldAlert, Trash2, Settings } from 'lucide-react';
 import { DualRangeSlider } from '../common/DualRangeSlider';
+
+function parseSmartEntry(input: string, prevValue?: unknown): EntryType {
+  const trimmed = input.trim();
+  if (trimmed === 'null') return null;
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // keep fallback
+    }
+  }
+  if (prevValue && typeof prevValue === 'object' && !Array.isArray(prevValue)) {
+    return { ...(prevValue as Record<string, any>), what: input };
+  }
+  return input;
+}
+
+function formatEntryForDisplay(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  if (val && typeof val === 'object' && !Array.isArray(val)) {
+    const obj = val as Record<string, any>;
+    if (obj.what && Object.keys(obj).length === 1) {
+      return obj.what;
+    }
+  }
+  return JSON.stringify(val);
+}
 
 export function NodeInspector() {
   const {
@@ -229,8 +257,11 @@ export function NodeInspector() {
               <label className="block text-[11px] font-medium text-gray-400 mb-1">{t.inspector.instructions}</label>
               <textarea
                 rows={2}
-                value={typeof selectedQ.instructions === 'string' ? selectedQ.instructions : JSON.stringify(selectedQ.instructions)}
-                onChange={(e) => updateQuestionInBatch(selectedNode.id, selectedQ.id, { instructions: e.target.value })}
+                value={formatEntryForDisplay(selectedQ.instructions)}
+                onChange={(e) => updateQuestionInBatch(selectedNode.id, selectedQ.id, {
+                  instructions: parseSmartEntry(e.target.value, selectedQ.instructions)
+                })}
+                placeholder="支持输入描述文本或结构化 JSON 对象"
                 className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-xs text-gray-200 focus:outline-none"
               />
             </div>
@@ -239,20 +270,67 @@ export function NodeInspector() {
               <label className="block text-[11px] font-medium text-gray-400 mb-1">
                 {t.inspector.criteriaConfig}
               </label>
+
               {selectedQ.type === 'choice' && (
                 <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-gray-400">
+                      选项数量: {Object.keys(selectedQ.criteria).length} / 255
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const optCount = Object.keys(selectedQ.criteria).length;
+                        const optKey = optCount === 0 ? 'first_option' : 'option_' + (optCount + 1);
+                        const newCriteria = { ...selectedQ.criteria, [optKey]: '选项定义描述 (what)' };
+                        updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                      }}
+                      className="text-[11px] text-primary hover:text-primary/80 font-medium"
+                    >
+                      {t.inspector.addOption}
+                    </button>
+                  </div>
+
+                  {Object.keys(selectedQ.criteria).length > 255 && (
+                    <div className="text-[10px] text-rose-400 bg-rose-500/10 p-1.5 rounded border border-rose-500/30">
+                      {t.inspector.choiceLimitWarning}
+                    </div>
+                  )}
+
+                  {!Object.keys(selectedQ.criteria).some((k) => ['other', 'none', 'neither', 'unknown', 'fallback'].includes(k.toLowerCase())) && (
+                    <div className="text-[10px] text-amber-400/80 bg-amber-500/10 p-1.5 rounded border border-amber-500/20">
+                      {t.inspector.choiceFallbackTip}
+                    </div>
+                  )}
+
                   {Object.entries(selectedQ.criteria).map(([opt, desc], oidx) => (
                     <div key={opt + oidx} className="p-2 bg-[#151821] rounded border border-[#282D3D] space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono text-primary font-bold">{opt}</span>
+                        {Object.keys(selectedQ.criteria).length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newCriteria = { ...selectedQ.criteria };
+                              delete newCriteria[opt];
+                              updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                            }}
+                            className="text-gray-500 hover:text-rose-400 p-0.5"
+                            title="删除选项"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       <input
                         type="text"
-                        value={typeof desc === 'string' ? desc : JSON.stringify(desc)}
+                        value={formatEntryForDisplay(desc)}
                         onChange={(e) => {
-                          const newCriteria = { ...selectedQ.criteria, [opt]: e.target.value };
+                          const parsed = parseSmartEntry(e.target.value, desc);
+                          const newCriteria = { ...selectedQ.criteria, [opt]: parsed };
                           updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
                         }}
+                        placeholder="支持输入描述或 JSON 对象 {what, not_for, examples}"
                         className="w-full bg-[#0F1118] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300"
                       />
                     </div>
@@ -262,19 +340,57 @@ export function NodeInspector() {
 
               {selectedQ.type === 'score' && (
                 <div className="space-y-2">
-                  {selectedQ.criteria.map((lvl, lIdx) => (
-                    <div key={lIdx} className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-blue-400 font-bold w-4">{lIdx}:</span>
-                      <input
-                        type="text"
-                        value={typeof lvl === 'string' ? lvl : JSON.stringify(lvl)}
-                        onChange={(e) => {
-                          const newCriteria = [...selectedQ.criteria];
-                          newCriteria[lIdx] = e.target.value;
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-gray-400">
+                      {t.inspector.scoreLimitHint.replace('{count}', String(selectedQ.criteria.length))}
+                    </span>
+                    {selectedQ.criteria.length < 10 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextIdx = selectedQ.criteria.length;
+                          const newCriteria = [...selectedQ.criteria, { what: '第 ' + nextIdx + ' 档位定义' }];
                           updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
                         }}
+                        className="text-[11px] text-blue-400 hover:text-blue-300 font-medium"
+                      >
+                        {t.inspector.addScoreLevel}
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] text-gray-500">
+                    {t.inspector.scoreLevelsDesc}
+                  </p>
+
+                  {selectedQ.criteria.map((lvl, lIdx) => (
+                    <div key={lIdx} className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-blue-400 font-bold w-6 text-right">{lIdx}:</span>
+                      <input
+                        type="text"
+                        value={formatEntryForDisplay(lvl)}
+                        onChange={(e) => {
+                          const parsed = parseSmartEntry(e.target.value, lvl);
+                          const newCriteria = [...selectedQ.criteria];
+                          newCriteria[lIdx] = parsed;
+                          updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                        }}
+                        placeholder="分档定义文本或 JSON 对象 {summary, signals, what}"
                         className="flex-1 bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300"
                       />
+                      {selectedQ.criteria.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newCriteria = selectedQ.criteria.filter((_, idx) => idx !== lIdx);
+                            updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                          }}
+                          className="text-gray-500 hover:text-rose-400 p-1"
+                          title="删除分档 (至少保留 2 档)"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -282,15 +398,20 @@ export function NodeInspector() {
 
               {selectedQ.type === 'noul' && (
                 <div className="space-y-2">
+                  <p className="text-[10px] text-gray-500">
+                    {t.inspector.noulDesc}
+                  </p>
                   <div>
                     <span className="text-xs font-mono text-emerald-400 font-bold">{t.inspector.criteriaTrue}</span>
                     <input
                       type="text"
-                      value={(selectedQ.criteria?.true as string) || ''}
+                      value={formatEntryForDisplay(selectedQ.criteria?.true)}
                       onChange={(e) => {
-                        const newCriteria = { ...selectedQ.criteria, true: e.target.value };
+                        const parsed = parseSmartEntry(e.target.value, selectedQ.criteria?.true);
+                        const newCriteria = { ...selectedQ.criteria, true: parsed };
                         updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
                       }}
+                      placeholder="判定为真 (Yes) 的标准描述或 JSON"
                       className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300 mt-1"
                     />
                   </div>
@@ -298,11 +419,13 @@ export function NodeInspector() {
                     <span className="text-xs font-mono text-rose-400 font-bold">{t.inspector.criteriaFalse}</span>
                     <input
                       type="text"
-                      value={(selectedQ.criteria?.false as string) || ''}
+                      value={formatEntryForDisplay(selectedQ.criteria?.false)}
                       onChange={(e) => {
-                        const newCriteria = { ...selectedQ.criteria, false: e.target.value };
+                        const parsed = parseSmartEntry(e.target.value, selectedQ.criteria?.false);
+                        const newCriteria = { ...selectedQ.criteria, false: parsed };
                         updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
                       }}
+                      placeholder="判定为假 (No) 的标准描述或 JSON"
                       className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300 mt-1"
                     />
                   </div>

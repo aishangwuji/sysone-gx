@@ -62,10 +62,12 @@ export function generatePythonCode(nodes: Node[], edges: Edge[]): string {
       const fallbackEdge = edges.find((e) => e.source === bNode.id && e.sourceHandle === 'fallback_handle');
       const targetAction = actionNodes.find((a) => a.id === fallbackEdge?.target);
 
-      code += '        # confidence fallback guardrail (range: ' + confRange[0].toFixed(2) + ' ~ ' + confRange[1].toFixed(2) + ')\n' +
+      code += '        # Guardrail fallback for confidence (choice/score) and uncertainty range (noul)\n' +
         '        for q_id, ans in ' + stepVar + '.answers.items():\n' +
         '            if hasattr(ans, "confidence") and ' + confRange[0].toFixed(2) + ' <= ans.confidence <= ' + confRange[1].toFixed(2) + ':\n' +
-        '                return {"action": "' + (targetAction ? (targetAction.data as ActionNodeData).title : 'fallback_action') + '", "reason": "confidence_fallback_in_range"}\n\n';
+        '                return {"action": "' + (targetAction ? (targetAction.data as ActionNodeData).title : 'fallback_action') + '", "reason": "confidence_fallback_in_range"}\n' +
+        '            if hasattr(ans, "noul") and ' + confRange[0].toFixed(2) + ' <= ans.noul <= ' + confRange[1].toFixed(2) + ':\n' +
+        '                return {"action": "' + (targetAction ? (targetAction.data as ActionNodeData).title : 'fallback_action') + '", "reason": "noul_uncertainty_review"}\n\n';
     }
   });
 
@@ -145,7 +147,7 @@ export function generateOpenRouterCode(nodes: Node[], _edges: Edge[]): string {
       '    },\n' +
       '    body: JSON.stringify({\n' +
       '      model: "' + modelName + '",\n' +
-      '      state: typeof stateInput === "string" ? { text: stateInput } : stateInput,\n' +
+      '      state: typeof stateInput === "string" && stateInput.trim().startsWith("{") ? (() => { try { return JSON.parse(stateInput); } catch { return stateInput; } })() : stateInput,\n' +
       '      questions: ' + JSON.stringify(questionsPayload, null, 8).replace(/\n/g, '\n      ') + '\n' +
       '    })\n' +
       '  });\n\n' +

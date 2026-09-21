@@ -98,9 +98,9 @@ export class AuthService {
                 type: 'score',
                 instructions: '评估客户在沟通文本中表达出的受挫和愤怒程度。',
                 criteria: [
-                  { level: 0, what: '情绪平和友善，正常提出业务咨询。' },
-                  { level: 1, what: '略显焦急但保持克制礼貌。' },
-                  { level: 2, what: '言辞激烈，带有强烈不满、警告或投诉要求。' }
+                  { what: '情绪平和友善，正常提出业务咨询。' },
+                  { what: '略显焦急但保持克制礼貌。' },
+                  { what: '言辞激烈，带有强烈不满、警告或投诉要求。' }
                 ]
               }
             ]

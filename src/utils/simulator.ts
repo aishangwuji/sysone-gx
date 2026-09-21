@@ -87,12 +87,16 @@ export async function runWorkflowSimulation(
         batchAnswers[q.id] = qAns;
         answers[q.id] = qAns;
 
-        if (qAns.confidence !== undefined && qAns.confidence < lowestConfidence) {
+        if (qAns.confidence !== undefined && (lowestConfidence === undefined || qAns.confidence < lowestConfidence)) {
           lowestConfidence = qAns.confidence;
         }
 
         const resSummary = q.type === 'choice' ? qAns.choice : q.type === 'score' ? qAns.score.toFixed(2) : (qAns.noul * 100).toFixed(0) + '%';
-        const confSummary = qAns.confidence !== undefined ? ' (Confidence: ' + qAns.confidence.toFixed(2) + ')' : '';
+        const confSummary = q.type === 'noul'
+          ? ' (Calibrated P: ' + (qAns.noul * 100).toFixed(0) + '%)'
+          : qAns.confidence !== undefined
+            ? ' (Confidence: ' + qAns.confidence.toFixed(2) + ')'
+            : '';
 
         logs.push({
           nodeId: currentNode.id,
@@ -106,13 +110,37 @@ export async function runWorkflowSimulation(
       const [confMin, confMax] = confRange;
       const hasFallbackEdge = edges.find((e) => e.source === currentNode?.id && e.sourceHandle === 'fallback_handle');
 
-      const isWithinFallbackRange = lowestConfidence >= confMin && lowestConfidence <= confMax;
+      // Check if ANY question in the batch triggers guardrail fallback:
+      // 1. For choice / score: confidence falls into the uncertain range [confMin, confMax]
+      // 2. For noul: calibrated probability noul falls into the uncertain range [confMin, confMax] (e.g. 0.30 ~ 0.70)
+      let fallbackTriggered = false;
+      let fallbackLogReason = '';
 
-      if (bData.enableConfidenceFallback && isWithinFallbackRange && hasFallbackEdge) {
+      for (const q of bData.questions) {
+        const qAns = batchAnswers[q.id];
+        if (!qAns) continue;
+
+        if (q.type === 'noul') {
+          const noulP = qAns.noul ?? 0.5;
+          if (noulP >= confMin && noulP <= confMax) {
+            fallbackTriggered = true;
+            fallbackLogReason = 'Noul 问题 [' + q.id + '] 校准概率 (' + (noulP * 100).toFixed(0) + '%) 落在不确定送审区间 [' + (confMin * 100).toFixed(0) + '% ~ ' + (confMax * 100).toFixed(0) + '%]';
+            break;
+          }
+        } else if (qAns.confidence !== undefined) {
+          if (qAns.confidence >= confMin && qAns.confidence <= confMax) {
+            fallbackTriggered = true;
+            fallbackLogReason = '问题 [' + q.id + '] 评估置信度 (' + qAns.confidence.toFixed(2) + ') 落在兜底区间 [' + confMin.toFixed(2) + ' ~ ' + confMax.toFixed(2) + ']';
+            break;
+          }
+        }
+      }
+
+      if (bData.enableConfidenceFallback && fallbackTriggered && hasFallbackEdge) {
         logs.push({
           nodeId: currentNode.id,
           type: 'fallback',
-          message: 'Batch lowest confidence (' + lowestConfidence.toFixed(2) + ') fell into fallback range [' + confMin.toFixed(2) + ' ~ ' + confMax.toFixed(2) + ']. Routing to Fallback!'
+          message: fallbackLogReason + '。Routing to Fallback!'
         });
         activeEdgeIds.push(hasFallbackEdge.id);
         nextNode = nodeMap.get(hasFallbackEdge.target);
@@ -194,10 +222,18 @@ function simulateSingleQuestion(q: Question, stateLower: string): any {
       const optKeywords = [opt.replace('_', ' ')];
       if (typeof descObj === 'string') {
         optKeywords.push(...descObj.toLowerCase().split(/[ ,;.]+/));
+      } else if (Array.isArray(descObj)) {
+        descObj.forEach((item) => {
+          if (typeof item === 'string') optKeywords.push(...item.toLowerCase().split(/[ ,;.]+/));
+        });
       } else if (descObj && typeof descObj === 'object') {
-        if (descObj.what) optKeywords.push(...descObj.what.toLowerCase().split(/[ ,;.]+/));
-        if (Array.isArray(descObj.examples)) {
-          descObj.examples.forEach((ex) => optKeywords.push(...ex.toLowerCase().split(/[ ,;.]+/)));
+        const obj = descObj as Record<string, any>;
+        if (typeof obj.what === 'string') optKeywords.push(...obj.what.toLowerCase().split(/[ ,;.]+/));
+        if (typeof obj.summary === 'string') optKeywords.push(...obj.summary.toLowerCase().split(/[ ,;.]+/));
+        if (Array.isArray(obj.examples)) {
+          obj.examples.forEach((ex: any) => {
+            if (typeof ex === 'string') optKeywords.push(...ex.toLowerCase().split(/[ ,;.]+/));
+          });
         }
       }
 
@@ -213,12 +249,20 @@ function simulateSingleQuestion(q: Question, stateLower: string): any {
     const probabilities: Record<string, number> = {};
     let maxProb = 0;
     let selectedChoice = options[0];
+    let sumChoiceP = 0;
 
-    for (const opt of options) {
-      const p = parseFloat((rawScores[opt] / totalScore).toFixed(2));
-      probabilities[opt] = p;
-      if (p > maxProb) {
-        maxProb = p;
+    for (let i = 0; i < options.length; i++) {
+      const opt = options[i];
+      if (i === options.length - 1) {
+        const remaining = parseFloat((1.0 - sumChoiceP).toFixed(2));
+        probabilities[opt] = Math.max(0, remaining);
+      } else {
+        const p = parseFloat((rawScores[opt] / totalScore).toFixed(2));
+        probabilities[opt] = p;
+        sumChoiceP += p;
+      }
+      if (probabilities[opt] > maxProb) {
+        maxProb = probabilities[opt];
         selectedChoice = opt;
       }
     }
@@ -233,23 +277,40 @@ function simulateSingleQuestion(q: Question, stateLower: string): any {
     };
   } else if (q.type === 'score') {
     const levels = q.criteria;
-    const count = levels.length;
+    const count = Math.max(2, levels.length);
     let estimatedLevel = 0;
 
-    if (stateLower.includes('urgent') || stateLower.includes('immediately') || stateLower.includes('angry') || stateLower.includes('cancel') || stateLower.includes('right now') || stateLower.includes('two charges') || stateLower.includes('fail') || stateLower.includes('3 times')) {
+    const isHighSeverity = stateLower.includes('urgent') || stateLower.includes('immediately') || stateLower.includes('angry') || stateLower.includes('cancel') || stateLower.includes('right now') || stateLower.includes('two charges') || stateLower.includes('fail') || stateLower.includes('3 times');
+    const isMediumSeverity = stateLower.includes('wrong') || stateLower.includes('delay') || stateLower.includes('frustrated') || stateLower.includes('can i');
+    const isAmbiguous = stateLower.includes('maybe') || stateLower.includes('confused') || stateLower.includes('not sure');
+
+    if (isHighSeverity) {
       estimatedLevel = count - 1;
-    } else if (stateLower.includes('wrong') || stateLower.includes('delay') || stateLower.includes('frustrated') || stateLower.includes('can i')) {
-      estimatedLevel = Math.min(count - 1, 1);
+    } else if (isMediumSeverity) {
+      estimatedLevel = Math.min(count - 1, Math.max(0, Math.floor(count / 2)));
+    } else {
+      estimatedLevel = 0;
     }
 
+    const peakProb = isAmbiguous ? 0.45 : (isHighSeverity ? 0.85 : 0.72);
+    const remainder = Math.max(0, 1.0 - peakProb);
+    const adjacentProb = parseFloat((remainder / (count > 2 ? 2 : 1)).toFixed(2));
+
     const probabilities: Record<string, number> = {};
+    let sumScoreP = 0;
+
     for (let i = 0; i < count; i++) {
-      if (i === estimatedLevel) {
-        probabilities[String(i)] = 0.78;
-      } else if (Math.abs(i - estimatedLevel) === 1) {
-        probabilities[String(i)] = 0.22 / (count > 2 ? 2 : 1);
+      if (i === count - 1) {
+        probabilities[String(i)] = parseFloat(Math.max(0, 1.0 - sumScoreP).toFixed(2));
       } else {
-        probabilities[String(i)] = 0.0;
+        let p = 0.0;
+        if (i === estimatedLevel) {
+          p = peakProb;
+        } else if (Math.abs(i - estimatedLevel) === 1) {
+          p = adjacentProb;
+        }
+        probabilities[String(i)] = p;
+        sumScoreP += p;
       }
     }
 
@@ -258,12 +319,27 @@ function simulateSingleQuestion(q: Question, stateLower: string): any {
       calculatedScore += i * (probabilities[String(i)] || 0);
     }
 
+    const sortedProbs = Object.values(probabilities).sort((a, b) => b - a);
+    const pTop = sortedProbs[0] || 0;
+    const pSecond = sortedProbs[1] || 0;
+    const scoreConfidence = parseFloat(Math.min(0.98, Math.max(0.15, (pTop - pSecond) + (pTop * 0.35))).toFixed(2));
+
+    const legend = levels.reduce<Record<string, string>>((acc, l, idx) => {
+      let desc = 'Level ' + idx;
+      if (typeof l === 'string') {
+        desc = l;
+      } else if (l && typeof l === 'object') {
+        desc = (l as any).summary || (l as any).what || ((l as any).signals ? (l as any).signals.join(', ') : 'Level ' + idx);
+      }
+      return { ...acc, [String(idx)]: desc };
+    }, {});
+
     return {
       type: 'score',
       score: parseFloat(calculatedScore.toFixed(2)),
-      confidence: 0.82,
+      confidence: scoreConfidence,
       probabilities,
-      legend: levels.reduce<Record<string, string>>((acc, l, idx) => ({ ...acc, [String(idx)]: typeof l === 'string' ? l : (l as any).what || ('Level ' + idx) }), {})
+      legend
     };
   } else {
     let prob = 0.08;

@@ -66,12 +66,15 @@ export async function callOpenRouterDecisions(
     }
   }
 
-  // Parse stateInput as JSON object if possible, otherwise wrap in text object
+  // Parse stateInput as JSON object if possible; otherwise pass through raw string per TypeSafe AI spec
   let statePayload: any = stateInput;
   try {
-    statePayload = JSON.parse(stateInput);
+    const parsed = JSON.parse(stateInput);
+    if (typeof parsed === 'object' && parsed !== null) {
+      statePayload = parsed;
+    }
   } catch {
-    statePayload = { text: stateInput, ticket: stateInput };
+    statePayload = stateInput;
   }
 
   // Normalize model ID: ensure typesafe/ namespace for OpenRouter catalog

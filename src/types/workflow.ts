@@ -1,35 +1,39 @@
 export type QuestionType = 'choice' | 'score' | 'noul';
 
+export type EntryType = string | Record<string, any> | any[] | null;
+
 export interface StructuredCriteria {
   what?: string;
   not_for?: string;
   examples?: string[];
+  summary?: string;
+  signals?: string[];
   [key: string]: any;
 }
 
-export type ChoiceCriteriaValue = string | StructuredCriteria | null;
+export type ChoiceCriteriaValue = EntryType;
 
 export interface ChoiceQuestion {
   id: string;
   type: 'choice';
-  instructions: string | Record<string, any>;
+  instructions: EntryType;
   criteria: Record<string, ChoiceCriteriaValue>;
 }
 
 export interface ScoreQuestion {
   id: string;
   type: 'score';
-  instructions: string | Record<string, any>;
-  criteria: Array<string | { what?: string; examples?: string[]; [key: string]: any }>;
+  instructions: EntryType;
+  criteria: EntryType[];
 }
 
 export interface NoulQuestion {
   id: string;
   type: 'noul';
-  instructions: string | Record<string, any>;
+  instructions: EntryType;
   criteria?: {
-    true?: string | Record<string, any>;
-    false?: string | Record<string, any>;
+    true?: EntryType;
+    false?: EntryType;
   };
 }
 

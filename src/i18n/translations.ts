@@ -64,7 +64,10 @@ export const translations = {
       noulDesc: "Calibrated probability (0.0 - 1.0) with Yes (>=0.7) and No (<=0.3) handles.",
       criteriaTrue: "Criteria for True (Yes)",
       criteriaFalse: "Criteria for False (No)",
-      removeQuestion: "Delete Question"
+      removeQuestion: "Delete Question",
+      scoreLimitHint: "Score must contain 2-10 ordered levels (current: {count})",
+      choiceLimitWarning: "⚠️ Exceeds 255 options limit, model will reject execution",
+      choiceFallbackTip: "💡 Official best practice: include an 'other' or 'none' fallback option"
     },
     sandbox: {
       title: "Live Sandbox & Simulator",
@@ -206,7 +209,10 @@ export const translations = {
       noulDesc: "概率校准判定 (0.0 - 1.0)，附带 是 (>=0.7) 与 否 (<=0.3) 路由引脚。",
       criteriaTrue: "判定为真 (Yes) 的标准",
       criteriaFalse: "判定为假 (No) 的标准",
-      removeQuestion: "删除当前问题"
+      removeQuestion: "删除当前问题",
+      scoreLimitHint: "Score 必须包含 2~10 档有序维度（当前: {count} 档）",
+      choiceLimitWarning: "⚠️ 超出 255 个选项上限，模型将拒绝执行",
+      choiceFallbackTip: "💡 官方最佳实践：建议包含 'other' 或 'none' 兜底选项"
     },
     sandbox: {
       title: "实时决策沙盒与仿真",

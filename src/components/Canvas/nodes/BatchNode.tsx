@@ -72,11 +72,21 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
 
                 {qAns && (
                   <div className="flex items-center gap-1.5 text-[11px]">
-                    {qAns.confidence !== undefined && (
+                    {qAns.confidence !== undefined ? (
                       <span className="text-[10px] text-amber-400 font-mono bg-amber-950/40 px-1 rounded">
                         conf: {qAns.confidence.toFixed(2)}
                       </span>
-                    )}
+                    ) : q.type === "noul" && qAns.noul !== undefined ? (
+                      <span className={`text-[10px] font-mono px-1 rounded ${
+                        qAns.noul >= 0.7
+                          ? 'text-emerald-400 bg-emerald-950/40'
+                          : qAns.noul <= 0.3
+                          ? 'text-rose-400 bg-rose-950/40'
+                          : 'text-amber-400 bg-amber-950/40'
+                      }`}>
+                        P: {(qAns.noul * 100).toFixed(0)}%
+                      </span>
+                    ) : null}
                     <span className="font-bold text-primary font-mono">
                       {q.type === "choice"
                         ? qAns.choice
@@ -89,7 +99,11 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
               </div>
 
               <div className="text-[11px] text-gray-400 line-clamp-1 mb-2">
-                {typeof q.instructions === "string" ? q.instructions : JSON.stringify(q.instructions)}
+                {typeof q.instructions === "string"
+                  ? q.instructions
+                  : (q.instructions && typeof q.instructions === "object")
+                  ? ((q.instructions as any).question || (q.instructions as any).what || JSON.stringify(q.instructions))
+                  : String(q.instructions ?? "")}
               </div>
 
               {q.type === "choice" && (
@@ -139,7 +153,7 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
                     >
                       <span className="text-gray-300 truncate max-w-[200px]">
                         <strong className="text-blue-400 font-mono">{lIdx}: </strong>
-                        {typeof level === "string" ? level : level.what || "Level " + lIdx}
+                        {typeof level === "string" ? level : (level && typeof level === "object" && !Array.isArray(level) ? ((level as any).summary || (level as any).what || ("Level " + lIdx)) : "Level " + lIdx)}
                       </span>
                       <Handle
                         type="source"
@@ -153,24 +167,56 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
               )}
 
               {q.type === "noul" && (
-                <div className="flex items-center justify-between mt-1.5 border-t border-[#232736] pt-1 px-1">
-                  <div className="relative flex items-center gap-1">
-                    <span className="text-[11px] text-emerald-400 font-semibold">{t.canvas.yesThreshold}</span>
-                    <Handle
-                      type="source"
-                      position={Position.Right}
-                      id={"q_" + q.id + "_yes"}
-                      className="!w-2.5 !h-2.5 !bg-emerald-400 !border-2 !border-[#12141C] -mr-3"
-                    />
-                  </div>
-                  <div className="relative flex items-center gap-1">
-                    <span className="text-[11px] text-rose-400 font-semibold">{t.canvas.noThreshold}</span>
-                    <Handle
-                      type="source"
-                      position={Position.Right}
-                      id={"q_" + q.id + "_no"}
-                      className="!w-2.5 !h-2.5 !bg-rose-400 !border-2 !border-[#12141C] -mr-3"
-                    />
+                <div className="space-y-1.5 mt-1.5 border-t border-[#232736] pt-1.5 px-1">
+                  {qAns?.noul !== undefined && (
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-gray-400">校准概率 (Noul):</span>
+                        <span className={`font-mono font-bold ${
+                          qAns.noul >= 0.7
+                            ? 'text-emerald-400'
+                            : qAns.noul <= 0.3
+                            ? 'text-rose-400'
+                            : 'text-amber-400'
+                        }`}>
+                          {(qAns.noul * 100).toFixed(0)}%
+                          {qAns.noul > 0.3 && qAns.noul < 0.7 && ' (送审/不确定)'}
+                        </span>
+                      </div>
+                      <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden flex">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            qAns.noul >= 0.7
+                              ? 'bg-emerald-400'
+                              : qAns.noul <= 0.3
+                              ? 'bg-rose-400'
+                              : 'bg-amber-400'
+                          }`}
+                          style={{ width: `${Math.max(3, qAns.noul * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-0.5">
+                    <div className="relative flex items-center gap-1">
+                      <span className="text-[11px] text-emerald-400 font-semibold">{t.canvas.yesThreshold}</span>
+                      <Handle
+                        type="source"
+                        position={Position.Right}
+                        id={"q_" + q.id + "_yes"}
+                        className="!w-2.5 !h-2.5 !bg-emerald-400 !border-2 !border-[#12141C] -mr-3"
+                      />
+                    </div>
+                    <div className="relative flex items-center gap-1">
+                      <span className="text-[11px] text-rose-400 font-semibold">{t.canvas.noThreshold}</span>
+                      <Handle
+                        type="source"
+                        position={Position.Right}
+                        id={"q_" + q.id + "_no"}
+                        className="!w-2.5 !h-2.5 !bg-rose-400 !border-2 !border-[#12141C] -mr-3"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
