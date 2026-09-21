@@ -21,8 +21,8 @@ export const translations = {
       customPayload: "Custom action payload",
       executedInTrace: "Executed in trace",
       fallbackHandle: "Fallback if Conf in [{min} - {max}]",
-      yesThreshold: "Yes (>=0.7)",
-      noThreshold: "No (<=0.3)",
+      yesThreshold: "Yes (>={val})",
+      noThreshold: "No (<={val})",
       confLabel: "conf:"
     },
     inspector: {
@@ -61,13 +61,18 @@ export const translations = {
       scoreLevelsDesc: "Score levels represent ordered evaluation rungs from lowest to highest.",
       addScoreLevel: "+ Add Score Level",
       levelWhatPrompt: "Level {idx} definition (what)",
-      noulDesc: "Calibrated probability (0.0 - 1.0) with Yes (>=0.7) and No (<=0.3) handles.",
+      noulDesc: "Calibrated probability (0.0 - 1.0). Configurable thresholds per misclassification cost (default: Yes>=0.7, No<=0.3).",
+      noulYesThresholdLabel: "Yes Threshold (>=)",
+      noulNoThresholdLabel: "No Threshold (<=)",
       criteriaTrue: "Criteria for True (Yes)",
       criteriaFalse: "Criteria for False (No)",
       removeQuestion: "Delete Question",
       scoreLimitHint: "Score must contain 2-10 ordered levels (current: {count})",
       choiceLimitWarning: "⚠️ Exceeds 255 options limit, model will reject execution",
-      choiceFallbackTip: "💡 Official best practice: include an 'other' or 'none' fallback option"
+      choiceFallbackTip: "💡 Official best practice: include an 'other' or 'none' fallback option",
+      mergeDownstream: "Speculative Batch Merge (Fan-out)",
+      mergeDownstreamDesc: "Connected downstream batch node detected. Merge it into this batch to leverage Jev speculative fan-out and eliminate round-trip latency.",
+      mergeWithNode: "Merge Downstream Batch: {title}"
     },
     sandbox: {
       title: "Live Sandbox & Simulator",
@@ -166,8 +171,8 @@ export const translations = {
       customPayload: "自定义动作参数配置",
       executedInTrace: "仿真路径已执行",
       fallbackHandle: "置信度区间 [{min} - {max}] 触发兜底",
-      yesThreshold: "是 (>=0.7)",
-      noThreshold: "否 (<=0.3)",
+      yesThreshold: "是 (>={val})",
+      noThreshold: "否 (<={val})",
       confLabel: "置信度:"
     },
     inspector: {
@@ -206,13 +211,18 @@ export const translations = {
       scoreLevelsDesc: "分值层级代表从最低档至最高档的有序评分维度标准。",
       addScoreLevel: "+ 添加评分档位",
       levelWhatPrompt: "第 {idx} 档位定义 (what)",
-      noulDesc: "概率校准判定 (0.0 - 1.0)，附带 是 (>=0.7) 与 否 (<=0.3) 路由引脚。",
+      noulDesc: "概率校准判定 (0.0 - 1.0)。可按误判代价配置阈值（默认: 是>=0.7，否<=0.3）。",
+      noulYesThresholdLabel: "判定为'是'的概率阈值 (>=)",
+      noulNoThresholdLabel: "判定为'否'的概率阈值 (<=)",
       criteriaTrue: "判定为真 (Yes) 的标准",
       criteriaFalse: "判定为假 (No) 的标准",
       removeQuestion: "删除当前问题",
       scoreLimitHint: "Score 必须包含 2~10 档有序维度（当前: {count} 档）",
       choiceLimitWarning: "⚠️ 超出 255 个选项上限，模型将拒绝执行",
-      choiceFallbackTip: "💡 官方最佳实践：建议包含 'other' 或 'none' 兜底选项"
+      choiceFallbackTip: "💡 官方最佳实践：建议包含 'other' 或 'none' 兜底选项",
+      mergeDownstream: "推测批处理合并 (Speculative Fan-out Merge)",
+      mergeDownstreamDesc: "检测到直接连接的下游批处理节点。合并至当前批次可利用 Jev 推测扇出特性在单次网络往返中完成评估，降低系统整体耗时。",
+      mergeWithNode: "合并下游批处理: {title}"
     },
     sandbox: {
       title: "实时决策沙盒与仿真",

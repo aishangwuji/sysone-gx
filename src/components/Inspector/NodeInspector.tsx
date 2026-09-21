@@ -1,8 +1,10 @@
 import React from 'react';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { BatchNodeData, ActionNodeData, EntryType } from '../../types/workflow';
-import { ShieldAlert, Trash2, Settings } from 'lucide-react';
+import { ShieldAlert, Trash2, Settings, Zap } from 'lucide-react';
 import { DualRangeSlider } from '../common/DualRangeSlider';
+import { resolveNativeModel, resolveOpenRouterModel } from '../../utils/modelMap';
+import { DEFAULT_NOUL_YES, DEFAULT_NOUL_NO } from '../../utils/constants';
 
 function parseSmartEntry(input: string, prevValue?: unknown): EntryType {
   const trimmed = input.trim();
@@ -35,6 +37,7 @@ function formatEntryForDisplay(val: unknown): string {
 export function NodeInspector() {
   const {
     nodes,
+    edges,
     selectedNodeId,
     selectedQuestionId,
     selectNode,
@@ -44,6 +47,7 @@ export function NodeInspector() {
     updateQuestionInBatch,
     removeQuestionFromBatch,
     deleteNode,
+    mergeDownstreamBatch,
     t
   } = useWorkflowStore();
 
@@ -114,7 +118,11 @@ export function NodeInspector() {
   }
 
   const bData = selectedNode.data as unknown as BatchNodeData;
-  const selectedQ = bData.questions.find((q) => q.id === selectedQuestionId) || bData.questions[0];
+  const selectedQ = bData.questions?.find((q) => q.id === selectedQuestionId) || bData.questions?.[0];
+
+  const downstreamBatchNodes = nodes.filter(
+    (n) => n.type === 'batchNode' && edges.some((e) => e.source === selectedNode.id && e.target === n.id)
+  );
 
   return (
     <div className="p-4 space-y-5 overflow-y-auto h-full">
@@ -149,7 +157,12 @@ export function NodeInspector() {
           >
             <option value="jev-latest">{t.inspector.modelRecommended}</option>
             <option value="jev-1.13.0">{t.inspector.modelStable}</option>
+            <option value="typesafe/jev-1.13">{t.inspector.modelOpenRouter}</option>
           </select>
+          <div className="flex items-center justify-between text-[10px] text-gray-500 mt-1 px-0.5">
+            <span>原生通道: <strong className="font-mono text-gray-400">{resolveNativeModel(bData.model || 'jev-latest')}</strong></span>
+            <span>OpenRouter: <strong className="font-mono text-gray-400">{resolveOpenRouterModel(bData.model || 'jev-latest')}</strong></span>
+          </div>
         </div>
 
         <div className="p-3 rounded-lg bg-[#17131F] border border-amber-500/20 space-y-2">
@@ -183,6 +196,38 @@ export function NodeInspector() {
             </div>
           )}
         </div>
+
+        {downstreamBatchNodes.length > 0 && (
+          <div className="p-3 rounded-lg bg-indigo-950/40 border border-indigo-500/30 space-y-2">
+            <div className="flex items-center gap-1.5 text-indigo-300 text-xs font-semibold">
+              <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>{t.inspector.mergeDownstream}</span>
+            </div>
+            <p className="text-[11px] text-gray-300 leading-relaxed">
+              {t.inspector.mergeDownstreamDesc}
+            </p>
+            <div className="space-y-1.5 pt-1">
+              {downstreamBatchNodes.map((dn) => {
+                const dnData = dn.data as unknown as BatchNodeData;
+                return (
+                  <button
+                    key={dn.id}
+                    type="button"
+                    onClick={() => mergeDownstreamBatch(selectedNode.id, dn.id)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-200 border border-indigo-500/40 rounded text-xs transition-colors"
+                  >
+                    <span className="truncate font-medium">
+                      {t.inspector.mergeWithNode.replace('{title}', dnData?.title || dn.id)}
+                    </span>
+                    <span className="text-[10px] font-mono text-indigo-300 opacity-90 ml-2 shrink-0">
+                      +{dnData?.questions?.length || 0} Q
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -401,6 +446,53 @@ export function NodeInspector() {
                   <p className="text-[10px] text-gray-500">
                     {t.inspector.noulDesc}
                   </p>
+
+                  <div className="grid grid-cols-2 gap-2 bg-[#151821] p-2 rounded border border-[#282D3D]">
+                    <div>
+                      <span className="text-[10px] text-emerald-400 font-mono block mb-1">
+                        {t.inspector.noulYesThresholdLabel}
+                      </span>
+                      <input
+                        type="number"
+                        min="0.5"
+                        max="0.99"
+                        step="0.05"
+                        value={selectedQ.thresholds?.yes ?? DEFAULT_NOUL_YES}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          updateQuestionInBatch(selectedNode.id, selectedQ.id, {
+                            thresholds: {
+                              yes: isNaN(val) ? DEFAULT_NOUL_YES : val,
+                              no: selectedQ.thresholds?.no ?? DEFAULT_NOUL_NO
+                            }
+                          });
+                        }}
+                        className="w-full bg-[#0F1118] border border-[#282D3D] rounded px-2 py-1 text-xs font-mono text-emerald-400"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-rose-400 font-mono block mb-1">
+                        {t.inspector.noulNoThresholdLabel}
+                      </span>
+                      <input
+                        type="number"
+                        min="0.01"
+                        max="0.5"
+                        step="0.05"
+                        value={selectedQ.thresholds?.no ?? DEFAULT_NOUL_NO}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          updateQuestionInBatch(selectedNode.id, selectedQ.id, {
+                            thresholds: {
+                              yes: selectedQ.thresholds?.yes ?? DEFAULT_NOUL_YES,
+                              no: isNaN(val) ? DEFAULT_NOUL_NO : val
+                            }
+                          });
+                        }}
+                        className="w-full bg-[#0F1118] border border-[#282D3D] rounded px-2 py-1 text-xs font-mono text-rose-400"
+                      />
+                    </div>
+                  </div>
                   <div>
                     <span className="text-xs font-mono text-emerald-400 font-bold">{t.inspector.criteriaTrue}</span>
                     <input

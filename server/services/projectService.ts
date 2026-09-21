@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { query } from '../db';
 import { ProjectWorkflowData } from '../types';
+import { validateWorkflow } from '../../shared/validateWorkflow';
 
 export class ProjectService {
   /**
@@ -55,6 +56,12 @@ export class ProjectService {
       ],
       edges: []
     };
+
+    // TD-2026-006: 边界数据强制校验，拦截脏数据入库
+    const validation = validateWorkflow(dataToSave);
+    if (!validation.valid) {
+      throw new Error(`工作流数据校验未通过: ${validation.errors.join('; ')}`);
+    }
 
     const sql = `
       INSERT INTO sysone_projects (
@@ -207,6 +214,11 @@ export class ProjectService {
       values.push(icon.trim());
     }
     if (workflowData !== undefined) {
+      // TD-2026-006: 边界数据强制校验，拦截脏数据入库
+      const validation = validateWorkflow(workflowData);
+      if (!validation.valid) {
+        throw new Error(`工作流数据校验未通过: ${validation.errors.join('; ')}`);
+      }
       updates.push(`workflow_data = $${paramIdx++}::jsonb`);
       values.push(JSON.stringify(workflowData));
     }

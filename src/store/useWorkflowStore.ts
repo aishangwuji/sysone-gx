@@ -5,6 +5,7 @@ import { SUPPORT_TRIAGE_NODES, SUPPORT_TRIAGE_EDGES, PRESET_STATES } from '../ut
 import { Language, translations } from '../i18n/translations';
 
 import { projectsApi } from '../api/client';
+import { validateWorkflow } from '../../shared/validateWorkflow';
 
 interface WorkflowState {
   nodes: Node[];
@@ -53,6 +54,7 @@ interface WorkflowState {
   addQuestionToBatch: (nodeId: string, questionType: 'choice' | 'score' | 'noul') => void;
   updateQuestionInBatch: (nodeId: string, questionId: string, updated: Partial<Question>) => void;
   removeQuestionFromBatch: (nodeId: string, questionId: string) => void;
+  mergeDownstreamBatch: (upstreamNodeId: string, downstreamNodeId: string) => void;
   deleteNode: (nodeId: string) => void;
   loadTemplate: (templateId: string) => void;
   clearSimulation: () => void;
@@ -122,11 +124,24 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   saveCurrentProject: async () => {
     const { currentProjectId, currentProjectName, nodes, edges } = get();
+    const wfData = { nodes, edges };
+
+    // TD-2026-006: 客户端预先校验，发现脏数据直接弹错拦截，不发无效请求
+    const validation = validateWorkflow(wfData);
+    if (!validation.valid) {
+      const errHeader = '工作流数据规范校验未通过，无法保存：';
+      const issues = validation.errors.slice(0, 3).map((e) => `• ${e}`).join('\n');
+      const more = validation.errors.length > 3 ? `\n...等共 ${validation.errors.length} 项规范错误` : '';
+      alert(`${errHeader}\n\n${issues}${more}`);
+      console.warn('[Workflow Validator] 校验未通过:', validation.errors);
+      return;
+    }
+
     if (!currentProjectId) {
       // 未绑定项目时自动新建
       const created = await projectsApi.create({
         name: currentProjectName || '新建决策树项目',
-        workflowData: { nodes, edges }
+        workflowData: wfData
       });
       set({ currentProjectId: created.id });
       await get().fetchUserProjects();
@@ -136,7 +151,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({ isSaving: true });
     try {
       await projectsApi.update(currentProjectId, {
-        workflowData: { nodes, edges }
+        workflowData: wfData
       });
       set({ isSaving: false });
     } catch (err) {
@@ -368,6 +383,63 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         return n;
       }),
       selectedQuestionId: null
+    });
+  },
+
+  mergeDownstreamBatch: (upstreamNodeId, downstreamNodeId) => {
+    const { nodes, edges } = get();
+    const upNode = nodes.find((n) => n.id === upstreamNodeId);
+    const downNode = nodes.find((n) => n.id === downstreamNodeId);
+    if (!upNode || !downNode) return;
+
+    const upData = upNode.data as unknown as BatchNodeData;
+    const downData = downNode.data as unknown as BatchNodeData;
+    if (!upData?.questions || !downData?.questions) return;
+
+    const existingQIds = new Set(upData.questions.map((q) => q.id));
+    const mergedQuestions = [...upData.questions];
+
+    downData.questions.forEach((dq) => {
+      let finalQId = dq.id;
+      if (existingQIds.has(finalQId)) {
+        finalQId = `${downNode.id}_${dq.id}`;
+      }
+      mergedQuestions.push({ ...dq, id: finalQId });
+    });
+
+    // Re-route outgoing edges from downstreamNode to upstreamNode
+    const newEdges = edges
+      .filter((e) => !(e.source === upstreamNodeId && e.target === downstreamNodeId))
+      .map((e) => {
+        if (e.source === downstreamNodeId) {
+          return {
+            ...e,
+            source: upstreamNodeId
+          };
+        }
+        return e;
+      });
+
+    // Remove downstream node and update upstream node questions
+    const newNodes = nodes
+      .filter((n) => n.id !== downstreamNodeId)
+      .map((n) => {
+        if (n.id === upstreamNodeId) {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              questions: mergedQuestions
+            }
+          };
+        }
+        return n;
+      });
+
+    set({
+      nodes: newNodes,
+      edges: newEdges,
+      selectedNodeId: upstreamNodeId
     });
   },
 
