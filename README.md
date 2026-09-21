@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/logo.png" width="240" alt="SysOne GX Logo" />
+  <img src="./public/logo.webp" width="240" alt="SysOne GX Logo" />
 </p>
 
 <h1 align="center">SysOne GX</h1>
