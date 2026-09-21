@@ -183,7 +183,15 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
         <div className="p-2 bg-[#17131F] border-t border-amber-500/20 flex items-center justify-between text-[11px] relative">
           <div className="flex items-center gap-1.5 text-amber-400 font-medium">
             <ShieldAlert className="w-3.5 h-3.5" />
-            <span>{t.canvas.fallbackHandle.replace("{val}", String(bData.confidenceThreshold ?? 0.35))}</span>
+            <span>
+              {(() => {
+                const range = bData.confidenceRange ?? [0.30, bData.confidenceThreshold ?? 0.70];
+                return t.canvas.fallbackHandle
+                  .replace("{min}", range[0].toFixed(2))
+                  .replace("{max}", range[1].toFixed(2))
+                  .replace("{val}", range[1].toFixed(2));
+              })()}
+            </span>
           </div>
           <Handle
             type="source"

@@ -20,7 +20,7 @@ export const translations = {
       defaultActionTitle: "Action",
       customPayload: "Custom action payload",
       executedInTrace: "Executed in trace",
-      fallbackHandle: "Fallback if Conf < {val}",
+      fallbackHandle: "Fallback if Conf in [{min} - {max}]",
       yesThreshold: "Yes (>=0.7)",
       noThreshold: "No (<=0.3)",
       confLabel: "conf:"
@@ -162,7 +162,7 @@ export const translations = {
       defaultActionTitle: "动作",
       customPayload: "自定义动作参数配置",
       executedInTrace: "仿真路径已执行",
-      fallbackHandle: "置信度低于 {val} 触发兜底",
+      fallbackHandle: "置信度区间 [{min} - {max}] 触发兜底",
       yesThreshold: "是 (>=0.7)",
       noThreshold: "否 (<=0.3)",
       confLabel: "置信度:"
@@ -189,7 +189,7 @@ export const translations = {
       modelStable: "jev-1.13.0 (生产稳定版)",
       modelOpenRouter: "typesafe/jev-1.13 (OpenRouter 决策接口)",
       confidenceFallback: "置信度兜底防线 (Guardrail)",
-      confidenceFallbackDesc: "当批次内任意问题预测置信度低于设定门限时，自动由兜底引脚向外路由。",
+      confidenceFallbackDesc: "当批次内任一问题预测置信度处于设定区间 [下限 ~ 上限] 时，判定为模糊不确定，自动由兜底引脚向外路由。",
       parallelQuestions: "并行评估问题集",
       entryType: "问题类型:",
       remove: "移除",

@@ -37,7 +37,8 @@ export class ProjectService {
             title: name.trim() + ' 根评估批处理',
             model: 'jev-latest',
             enableConfidenceFallback: true,
-            confidenceThreshold: 0.35,
+            confidenceRange: [0.30, 0.70],
+            confidenceThreshold: 0.70,
             questions: [
               {
                 id: 'primary_intent',

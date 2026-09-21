@@ -1,4 +1,4 @@
-﻿import { Node, Edge } from '@xyflow/react';
+import { Node, Edge } from '@xyflow/react';
 import { BatchNodeData, ActionNodeData } from '../types/workflow';
 
 export const SUPPORT_TRIAGE_NODES: Node[] = [
@@ -11,7 +11,8 @@ export const SUPPORT_TRIAGE_NODES: Node[] = [
       description: 'Single-call parallel batch: classifies intent, frustration, and escalation need',
       model: 'jev-latest',
       enableConfidenceFallback: true,
-      confidenceThreshold: 0.38,
+      confidenceRange: [0.30, 0.70],
+      confidenceThreshold: 0.70,
       questions: [
         {
           id: 'department',

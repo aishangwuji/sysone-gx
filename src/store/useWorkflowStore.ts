@@ -212,7 +212,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         description: 'Single parallel API call batch',
         model: 'jev-latest',
         enableConfidenceFallback: true,
-        confidenceThreshold: 0.35,
+        confidenceRange: [0.30, 0.70],
+        confidenceThreshold: 0.70,
         questions: [
           {
             id: 'question_' + Date.now().toString().slice(-3),

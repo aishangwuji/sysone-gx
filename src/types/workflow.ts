@@ -41,6 +41,7 @@ export interface BatchNodeData {
   model: string;
   questions: Question[];
   enableConfidenceFallback?: boolean;
+  confidenceRange?: [number, number];
   confidenceThreshold?: number;
   simulationResult?: {
     answers?: Record<string, {

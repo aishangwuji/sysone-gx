@@ -58,14 +58,14 @@ export function generatePythonCode(nodes: Node[], edges: Edge[]): string {
     code += '        results["' + bNode.id + '"] = ' + stepVar + '.answers\n\n';
 
     if (bData.enableConfidenceFallback) {
-      const fallbackThreshold = bData.confidenceThreshold ?? 0.35;
+      const confRange = bData.confidenceRange ?? [0.30, bData.confidenceThreshold ?? 0.70];
       const fallbackEdge = edges.find((e) => e.source === bNode.id && e.sourceHandle === 'fallback_handle');
       const targetAction = actionNodes.find((a) => a.id === fallbackEdge?.target);
 
-      code += '        # low confidence guardrail\n' +
+      code += '        # confidence fallback guardrail (range: ' + confRange[0].toFixed(2) + ' ~ ' + confRange[1].toFixed(2) + ')\n' +
         '        for q_id, ans in ' + stepVar + '.answers.items():\n' +
-        '            if hasattr(ans, "confidence") and ans.confidence < ' + fallbackThreshold + ':\n' +
-        '                return {"action": "' + (targetAction ? (targetAction.data as ActionNodeData).title : 'fallback_action') + '", "reason": "low_confidence"}\n\n';
+        '            if hasattr(ans, "confidence") and ' + confRange[0].toFixed(2) + ' <= ans.confidence <= ' + confRange[1].toFixed(2) + ':\n' +
+        '                return {"action": "' + (targetAction ? (targetAction.data as ActionNodeData).title : 'fallback_action') + '", "reason": "confidence_fallback_in_range"}\n\n';
     }
   });
 

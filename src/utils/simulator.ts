@@ -102,14 +102,17 @@ export async function runWorkflowSimulation(
       }
 
       let nextNode: Node | undefined = undefined;
-      const fallbackThreshold = bData.confidenceThreshold ?? 0.35;
+      const confRange = bData.confidenceRange ?? [0.30, bData.confidenceThreshold ?? 0.70];
+      const [confMin, confMax] = confRange;
       const hasFallbackEdge = edges.find((e) => e.source === currentNode?.id && e.sourceHandle === 'fallback_handle');
 
-      if (bData.enableConfidenceFallback && lowestConfidence < fallbackThreshold && hasFallbackEdge) {
+      const isWithinFallbackRange = lowestConfidence >= confMin && lowestConfidence <= confMax;
+
+      if (bData.enableConfidenceFallback && isWithinFallbackRange && hasFallbackEdge) {
         logs.push({
           nodeId: currentNode.id,
           type: 'fallback',
-          message: 'Batch confidence (' + lowestConfidence.toFixed(2) + ') fell below threshold (' + fallbackThreshold + '). Routing to Fallback!'
+          message: 'Batch lowest confidence (' + lowestConfidence.toFixed(2) + ') fell into fallback range [' + confMin.toFixed(2) + ' ~ ' + confMax.toFixed(2) + ']. Routing to Fallback!'
         });
         activeEdgeIds.push(hasFallbackEdge.id);
         nextNode = nodeMap.get(hasFallbackEdge.target);

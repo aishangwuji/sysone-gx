@@ -2,6 +2,7 @@ import React from 'react';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { BatchNodeData, ActionNodeData } from '../../types/workflow';
 import { ShieldAlert, Trash2, Settings } from 'lucide-react';
+import { DualRangeSlider } from '../common/DualRangeSlider';
 
 export function NodeInspector() {
   const {
@@ -140,19 +141,17 @@ export function NodeInspector() {
             {t.inspector.confidenceFallbackDesc}
           </p>
           {bData.enableConfidenceFallback && (
-            <div className="flex items-center gap-3 mt-1">
-              <input
-                type="range"
-                min="0.1"
-                max="0.9"
-                step="0.05"
-                value={bData.confidenceThreshold ?? 0.35}
-                onChange={(e) => updateBatchNodeData(selectedNode.id, { confidenceThreshold: parseFloat(e.target.value) })}
-                className="flex-1 accent-amber-400"
+            <div className="mt-2 pt-2 border-t border-amber-500/20">
+              <DualRangeSlider
+                min={0.0}
+                max={1.0}
+                step={0.05}
+                value={bData.confidenceRange ?? [0.30, bData.confidenceThreshold ?? 0.70]}
+                onChange={([low, high]) => updateBatchNodeData(selectedNode.id, {
+                  confidenceRange: [low, high],
+                  confidenceThreshold: high
+                })}
               />
-              <span className="text-xs font-mono text-amber-400 font-bold">
-                {(bData.confidenceThreshold ?? 0.35).toFixed(2)}
-              </span>
             </div>
           )}
         </div>

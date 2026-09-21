@@ -79,7 +79,8 @@ export class AuthService {
             title: '智能客服第一级并行评估',
             model: 'jev-latest',
             enableConfidenceFallback: true,
-            confidenceThreshold: 0.35,
+            confidenceRange: [0.30, 0.70],
+            confidenceThreshold: 0.70,
             questions: [
               {
                 id: 'department',
