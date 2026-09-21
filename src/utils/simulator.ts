@@ -1,5 +1,6 @@
 import { Node, Edge } from '@xyflow/react';
-import { BatchNodeData, Question, SimulationTrace } from '../types/workflow';
+import { BatchNodeData, Question, NoulQuestion, SimulationTrace } from '../types/workflow';
+import { DEFAULT_NOUL_YES, DEFAULT_NOUL_NO } from './constants';
 
 /**
  * High-fidelity heuristic simulator for TypeSafe Jev model.
@@ -166,7 +167,10 @@ export async function runWorkflowSimulation(
                   break;
                 }
               } else if (matchedQ.type === 'noul') {
-                if ((optionKey === 'yes' && qAns?.noul >= 0.7) || (optionKey === 'no' && qAns?.noul <= 0.3)) {
+                const nq = matchedQ as NoulQuestion;
+                const yesT = nq.thresholds?.yes ?? DEFAULT_NOUL_YES;
+                const noT = nq.thresholds?.no ?? DEFAULT_NOUL_NO;
+                if ((optionKey === 'yes' && (qAns?.noul ?? 0) >= yesT) || (optionKey === 'no' && (qAns?.noul ?? 0) <= noT)) {
                   activeEdgeIds.push(edge.id);
                   nextNode = nodeMap.get(edge.target);
                   break;

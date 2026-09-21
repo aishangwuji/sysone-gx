@@ -31,6 +31,10 @@ export interface NoulQuestion {
   id: string;
   type: 'noul';
   instructions: EntryType;
+  thresholds?: {
+    yes?: number;
+    no?: number;
+  };
   criteria?: {
     true?: EntryType;
     false?: EntryType;

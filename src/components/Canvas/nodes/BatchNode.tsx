@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
-import { BatchNodeData } from "../../../types/workflow";
+import { BatchNodeData, NoulQuestion } from "../../../types/workflow";
+import { DEFAULT_NOUL_YES, DEFAULT_NOUL_NO } from "../../../utils/constants";
 import { useWorkflowStore } from "../../../store/useWorkflowStore";
 import { Layers, ShieldAlert, CheckCircle2 } from "lucide-react";
 
@@ -200,7 +201,9 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
 
                   <div className="flex items-center justify-between pt-0.5">
                     <div className="relative flex items-center gap-1">
-                      <span className="text-[11px] text-emerald-400 font-semibold">{t.canvas.yesThreshold}</span>
+                      <span className="text-[11px] text-emerald-400 font-semibold">
+                        {t.canvas.yesThreshold.replace('{val}', String((q as NoulQuestion).thresholds?.yes ?? DEFAULT_NOUL_YES))}
+                      </span>
                       <Handle
                         type="source"
                         position={Position.Right}
@@ -209,7 +212,9 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
                       />
                     </div>
                     <div className="relative flex items-center gap-1">
-                      <span className="text-[11px] text-rose-400 font-semibold">{t.canvas.noThreshold}</span>
+                      <span className="text-[11px] text-rose-400 font-semibold">
+                        {t.canvas.noThreshold.replace('{val}', String((q as NoulQuestion).thresholds?.no ?? DEFAULT_NOUL_NO))}
+                      </span>
                       <Handle
                         type="source"
                         position={Position.Right}
