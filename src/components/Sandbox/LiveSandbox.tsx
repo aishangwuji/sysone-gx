@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { runWorkflowSimulation } from '../../utils/simulator';
 import { PRESET_STATES } from '../../utils/defaultTemplates';
-import { Play, RotateCcw, Sparkles, AlertCircle, Terminal, Key, Eye, EyeOff, Zap, Cpu } from 'lucide-react';
+import { Play, RotateCcw, Sparkles, AlertCircle, Terminal } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export function LiveSandbox() {
@@ -11,8 +11,6 @@ export function LiveSandbox() {
     edges,
     testStateInput,
     setTestStateInput,
-    apiKey,
-    setApiKey,
     isSimulating,
     setIsSimulating,
     simulationTrace,
@@ -23,7 +21,6 @@ export function LiveSandbox() {
   } = useWorkflowStore();
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [showKey, setShowKey] = useState(false);
 
   const handleRun = async () => {
     if (!testStateInput.trim()) {
@@ -38,8 +35,7 @@ export function LiveSandbox() {
       const { trace, updatedNodes } = await runWorkflowSimulation(
         nodes,
         edges,
-        testStateInput,
-        apiKey
+        testStateInput
       );
 
       setNodes(updatedNodes);
@@ -75,49 +71,6 @@ export function LiveSandbox() {
           <RotateCcw className="w-3 h-3" />
           {t.sandbox.reset}
         </button>
-      </div>
-
-      {/* Mode Status Badge */}
-      <div className="mb-3 flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#141824] border border-[#282D3D]">
-        <span className="text-[11px] text-gray-400 font-medium">Mode:</span>
-        {apiKey.trim() ? (
-          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-mono bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-500/30">
-            <Zap className="w-3 h-3" />
-            {t.sandbox.liveMode}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-[10px] text-sky-400 font-mono bg-sky-950/50 px-2 py-0.5 rounded border border-sky-500/30">
-            <Cpu className="w-3 h-3" />
-            {t.sandbox.simMode}
-          </span>
-        )}
-      </div>
-
-      {/* OpenRouter API Key Input */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-[11px] font-medium text-gray-400 flex items-center gap-1">
-            <Key className="w-3 h-3 text-amber-400" />
-            {t.sandbox.apiKeyLabel}
-          </label>
-        </div>
-        <div className="relative">
-          <input
-            type={showKey ? 'text' : 'password'}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder={t.sandbox.apiKeyPlaceholder}
-            className="w-full bg-[#0F1118] border border-[#282D3D] rounded-lg pl-3 pr-8 py-1.5 text-xs font-mono text-gray-200 focus:outline-none focus:border-primary"
-          />
-          <button
-            type="button"
-            onClick={() => setShowKey(!showKey)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 p-0.5"
-            title={showKey ? 'Hide key' : 'Show key'}
-          >
-            {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          </button>
-        </div>
       </div>
 
       {/* Presets */}

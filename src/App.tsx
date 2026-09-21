@@ -1,10 +1,31 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Header } from './components/Header';
 import { WorkflowCanvas } from './components/Canvas/WorkflowCanvas';
 import { NodeInspector } from './components/Inspector/NodeInspector';
 import { LiveSandbox } from './components/Sandbox/LiveSandbox';
+import { AuthModal } from './components/Auth/AuthModal';
+import { ProjectManagerModal } from './components/Project/ProjectManagerModal';
+import { useAuthStore } from './store/useAuthStore';
+import { useWorkflowStore } from './store/useWorkflowStore';
 
 export default function App() {
+  const { initAuth, isAuthenticated } = useAuthStore();
+  const { fetchUserProjects, loadProjectById, currentProjectId } = useWorkflowStore();
+
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserProjects().then((projects) => {
+        if (projects && projects.length > 0 && !currentProjectId) {
+          loadProjectById(projects[0].id);
+        }
+      });
+    }
+  }, [isAuthenticated, fetchUserProjects, loadProjectById, currentProjectId]);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0B0D13]">
       {/* Top Navbar */}
@@ -30,6 +51,10 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Auth & Project Modals */}
+      <AuthModal />
+      <ProjectManagerModal />
     </div>
   );
 }

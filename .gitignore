@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 AGENTS.md
+*.tsbuildinfo
+.env
+.env.local

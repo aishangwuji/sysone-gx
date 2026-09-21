@@ -1,17 +1,14 @@
 import { Node, Edge } from '@xyflow/react';
 import { BatchNodeData, Question, SimulationTrace } from '../types/workflow';
-import { callOpenRouterDecisions } from './openRouterClient';
 
 /**
- * Executes workflow simulation, supporting both:
- * 1. Live OpenRouter API calls (https://openrouter.ai/api/alpha/decisions) when apiKey is provided
- * 2. High-fidelity heuristic simulation of TypeSafe Jev model when apiKey is not provided
+ * High-fidelity heuristic simulator for TypeSafe Jev model.
+ * Evaluates state input against choice, score, and noul primitives offline safely.
  */
 export async function runWorkflowSimulation(
   nodes: Node[],
   edges: Edge[],
-  stateInput: string,
-  apiKey?: string
+  stateInput: string
 ): Promise<{ trace: SimulationTrace; updatedNodes: Node[] }> {
   const visitedNodeIds: string[] = [];
   const activeEdgeIds: string[] = [];
@@ -33,38 +30,41 @@ export async function runWorkflowSimulation(
   let currentNode: Node | undefined = rootNode;
   let finalAction: SimulationTrace['finalAction'] | undefined = undefined;
 
-  const isLive = Boolean(apiKey && apiKey.trim().length > 0);
-
   logs.push({
     nodeId: rootNode.id,
     type: 'info',
-    message: isLive
-      ? 'Starting LIVE execution via OpenRouter Decisions API at root: ' + (rootNode.data.title || rootNode.id)
-      : 'Starting simulation evaluation at root: ' + (rootNode.data.title || rootNode.id)
+    message: 'Starting simulation evaluation at root: ' + (rootNode.data.title || rootNode.id)
   });
 
   const stateLower = stateInput.toLowerCase();
+  const maxSteps = 25;
+  let stepCount = 0;
 
-  while (currentNode) {
+  while (currentNode && stepCount < maxSteps) {
+    stepCount++;
     visitedNodeIds.push(currentNode.id);
 
     if (currentNode.type === 'actionNode') {
       const aData = currentNode.data as any;
+      const actionObj = {
+        nodeId: currentNode.id,
+        title: aData.title || currentNode.id,
+        actionType: aData.actionType || 'custom'
+      };
+      finalAction = actionObj;
+
       logs.push({
         nodeId: currentNode.id,
         type: 'action',
-        message: 'Reached final action [' + aData.title + ']: ' + aData.actionType
+        message: 'Action Reached: [' + actionObj.title + '] (' + actionObj.actionType + ')'
       });
-      finalAction = {
-        nodeId: currentNode.id,
-        title: aData.title,
-        actionType: aData.actionType
-      };
+
       currentNode.data = {
         ...currentNode.data,
         simulationResult: {
-          executed: true,
-          executedAt: new Date().toLocaleTimeString()
+          answers: {},
+          status: 'passed',
+          executionTimeMs: Math.floor(10 + Math.random() * 20)
         }
       };
       break;
@@ -74,92 +74,31 @@ export async function runWorkflowSimulation(
       const bData = currentNode.data as BatchNodeData;
       const batchAnswers: Record<string, any> = {};
       let lowestConfidence = 1.0;
-      let executionDuration = 0;
+      const executionDuration = Math.floor(45 + Math.random() * 35);
 
       logs.push({
         nodeId: currentNode.id,
         type: 'info',
-        message: isLive
-          ? 'Calling OpenRouter (typesafe/jev-1.13) with ' + bData.questions.length + ' parallel questions...'
-          : 'Simulating ' + bData.questions.length + ' parallel questions with System One (' + bData.model + ')...'
+        message: 'Simulating ' + bData.questions.length + ' parallel questions with System One (' + bData.model + ')...'
       });
 
-      if (isLive && apiKey) {
-        const startTime = Date.now();
-        try {
-          const liveRes = await callOpenRouterDecisions(bData, stateInput, apiKey);
-          executionDuration = Date.now() - startTime;
+      for (const q of bData.questions) {
+        const qAns = simulateSingleQuestion(q, stateLower);
+        batchAnswers[q.id] = qAns;
+        answers[q.id] = qAns;
 
-          for (const q of bData.questions) {
-            const apiAns = liveRes.answers?.[q.id];
-            if (apiAns) {
-              batchAnswers[q.id] = apiAns;
-              answers[q.id] = apiAns;
-
-              if (apiAns.confidence !== undefined && apiAns.confidence < lowestConfidence) {
-                lowestConfidence = apiAns.confidence;
-              }
-
-              const resSummary = q.type === 'choice' ? apiAns.choice : q.type === 'score' ? apiAns.score?.toFixed(2) : ((apiAns.noul ?? 0) * 100).toFixed(0) + '%';
-              const confSummary = apiAns.confidence !== undefined ? ' (Confidence: ' + apiAns.confidence.toFixed(2) + ')' : '';
-
-              logs.push({
-                nodeId: currentNode.id,
-                type: 'decision',
-                message: '[OpenRouter LIVE] Question [' + q.id + ' (' + q.type + ')]: Result = ' + resSummary + confSummary
-              });
-            } else {
-              // Fallback to simulator if question missing in answer
-              const simAns = simulateSingleQuestion(q, stateLower);
-              batchAnswers[q.id] = simAns;
-              answers[q.id] = simAns;
-            }
-          }
-
-          if (liveRes.usage) {
-            logs.push({
-              nodeId: currentNode.id,
-              type: 'info',
-              message: 'OpenRouter usage: tokens=' + (liveRes.usage.input_tokens || 0) + 'in/' + (liveRes.usage.output_tokens || 0) + 'out, cost=$' + (liveRes.usage.cost || 0)
-            });
-          }
-        } catch (apiErr: any) {
-          logs.push({
-            nodeId: currentNode.id,
-            type: 'fallback',
-            message: 'OpenRouter API failed: ' + (apiErr.message || 'unknown error') + '. Falling back to heuristic engine.'
-          });
-          // Fallback to local heuristic
-          executionDuration = Math.floor(70 + Math.random() * 40);
-          for (const q of bData.questions) {
-            const qAns = simulateSingleQuestion(q, stateLower);
-            batchAnswers[q.id] = qAns;
-            answers[q.id] = qAns;
-            if (qAns.confidence !== undefined && qAns.confidence < lowestConfidence) {
-              lowestConfidence = qAns.confidence;
-            }
-          }
+        if (qAns.confidence !== undefined && qAns.confidence < lowestConfidence) {
+          lowestConfidence = qAns.confidence;
         }
-      } else {
-        executionDuration = Math.floor(60 + Math.random() * 50);
-        for (const q of bData.questions) {
-          const qAns = simulateSingleQuestion(q, stateLower);
-          batchAnswers[q.id] = qAns;
-          answers[q.id] = qAns;
 
-          if (qAns.confidence !== undefined && qAns.confidence < lowestConfidence) {
-            lowestConfidence = qAns.confidence;
-          }
+        const resSummary = q.type === 'choice' ? qAns.choice : q.type === 'score' ? qAns.score.toFixed(2) : (qAns.noul * 100).toFixed(0) + '%';
+        const confSummary = qAns.confidence !== undefined ? ' (Confidence: ' + qAns.confidence.toFixed(2) + ')' : '';
 
-          const resSummary = q.type === 'choice' ? qAns.choice : q.type === 'score' ? qAns.score.toFixed(2) : (qAns.noul * 100).toFixed(0) + '%';
-          const confSummary = qAns.confidence !== undefined ? ' (Confidence: ' + qAns.confidence.toFixed(2) + ')' : '';
-
-          logs.push({
-            nodeId: currentNode.id,
-            type: 'decision',
-            message: 'Question [' + q.id + ' (' + q.type + ')]: Result = ' + resSummary + confSummary
-          });
-        }
+        logs.push({
+          nodeId: currentNode.id,
+          type: 'decision',
+          message: 'Question [' + q.id + ' (' + q.type + ')]: Result = ' + resSummary + confSummary
+        });
       }
 
       let nextNode: Node | undefined = undefined;

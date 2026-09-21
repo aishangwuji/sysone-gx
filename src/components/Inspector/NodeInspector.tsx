@@ -118,7 +118,6 @@ export function NodeInspector() {
             onChange={(e) => updateBatchNodeData(selectedNode.id, { model: e.target.value })}
             className="w-full bg-[#0F1118] border border-[#282D3D] rounded-md px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-primary"
           >
-            <option value="typesafe/jev-1.13">{t.inspector.modelOpenRouter}</option>
             <option value="jev-latest">{t.inspector.modelRecommended}</option>
             <option value="jev-1.13.0">{t.inspector.modelStable}</option>
           </select>
