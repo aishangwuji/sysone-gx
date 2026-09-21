@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', apiRouter);
 
 // 托管前端构建产物
-const distPath = path.resolve(__dirname, '../dist');
+const distPath = path.resolve(process.cwd(), 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('*', (req, res, next) => {
