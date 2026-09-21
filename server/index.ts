@@ -23,11 +23,12 @@ app.use('/api', apiRouter);
 const distPath = path.resolve(process.cwd(), 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) {
-      return next();
+  // SPA 回退处理 (兼容 Express 5)
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      return res.sendFile(path.resolve(distPath, 'index.html'));
     }
-    res.sendFile(path.resolve(distPath, 'index.html'));
+    next();
   });
 }
 
