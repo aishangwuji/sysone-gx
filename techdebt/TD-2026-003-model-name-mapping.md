@@ -12,7 +12,7 @@ schema_version: 1
 | 关联Spec | 无（源于官方 Choice/Score/Noul 文档对照评审） |
 | 关联规则 | 生产级工程导向（改动可预期：禁止静默改写用户配置） |
 | 优先级 | P2 |
-| 状态 | 已确认 |
+| 状态 | 已解决 |
 
 ## 详细描述
 项目中存在三套模型标识：`jev-latest` / `jev-1.13.0`（TypeSafe 原生）与 `typesafe/jev-1.13`（OpenRouter catalog），但三处各自为政：

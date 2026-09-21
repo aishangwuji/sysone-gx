@@ -12,7 +12,7 @@ schema_version: 1
 | 关联Spec | 无（源于官方 Choice/Score/Noul 文档对照评审） |
 | 关联规则 | 生产级工程导向（最小化实现：同 state 问题应一次调用并行） |
 | 优先级 | P3 |
-| 状态 | 已确认 |
+| 状态 | 已解决 |
 
 ## 详细描述
 官方推荐 Speculative fan-out：同一 `state` 的全部问题（含仅部分输入才用得上的推测式问题）放在一次调用里并行，代码忽略无用答案，只多花 question token。默认模板 `src/utils/defaultTemplates.ts:58-80` 把 `return_reason` 独立为第二个 batch（`batch_returns`），导致同一 ticket 需两次 `system_one` 调用，多付一次 state token 与一次 RTT。从正确性上没错，且两步路由对新手更直观，因此不直接合并默认模板。

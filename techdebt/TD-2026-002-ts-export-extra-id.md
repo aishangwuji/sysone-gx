@@ -12,7 +12,7 @@ schema_version: 1
 | 关联Spec | 无（源于官方 Choice/Score/Noul 文档对照评审） |
 | 关联规则 | 生产级工程导向（契约最小化：只发官方定义的字段） |
 | 优先级 | P2 |
-| 状态 | 已确认 |
+| 状态 | 已解决 |
 
 ## 详细描述
 官方 API 的 `questions` 为 `{<id>: {type, instructions, criteria}}` 映射，`id` 只是外层 key，value 只收三个字段。`src/utils/codeGenerator.ts:91-92` 用 `questionsObj[q.id] = q` 把含 `id/type/instructions/criteria` 的完整前端对象直接序列化进 TS 导出代码的请求体，属于脏契约。目前模型侧大概率忽略多余字段所以未炸，但官方一旦收紧校验即 400。Python 导出已正确剥离 `id`，TS 导出与之不一致。

@@ -12,7 +12,7 @@ schema_version: 1
 | 关联Spec | 无（源于官方 Choice/Score/Noul 文档对照评审） |
 | 关联规则 | 生产级工程导向（魔法数字显式化：阈值应为可配常量并注明语义） |
 | 优先级 | P3 |
-| 状态 | 已确认 |
+| 状态 | 已解决 |
 
 ## 详细描述
 官方立场是 Noul 阈值取决于误判成本（0.5/0.8/0.9 皆有场景），项目将其写死三处：`src/utils/simulator.ts:141` 路由判断 `>=0.7 / <=0.3`、`src/components/Canvas/nodes/BatchNode.tsx` 经 `canvas.yesThreshold/noThreshold` 展示、`src/i18n/translations.ts:24-25/64/166-167/206` 文案把 0.7/0.3 表述为标准。当前是“设计简化”而非 Bug，但会让用户误以为 0.7/0.3 是官方标准，且高代价场景（如退款、安全）无法收紧。另与高风险项联动：Noul 无 `confidence`，兜底若仍走 `confidenceRange`，即使阈值可配也进不了 fallback（见仿真器 `lowestConfidence` 忽略 Noul 问题）。

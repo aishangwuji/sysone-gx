@@ -12,7 +12,7 @@ schema_version: 1
 | 关联Spec | 无（源于官方 Choice/Score/Noul 文档对照评审） |
 | 关联规则 | P0 红线·边界数据强制校验（前端 workflow 属跨越信任边界的输入，入库前必须显式校验） |
 | 优先级 | P1 |
-| 状态 | 已确认 |
+| 状态 | 已解决 |
 
 ## 详细描述
 `server/` 无任何 `systemone/decisions` 相关逻辑，所有 TypeSafe 形状约束只活在前端：后端 `ProjectService.createProject/updateProject`（`server/services/projectService.ts`）对 `workflowData` 直接 `JSON.stringify` 入库，不校验 Choice option 数量（官方上限 255）、Score level 数量（官方要求 2-10 且有序）、Noul criteria 成对性、model 白名单。脏画布（如 Score 仅 1 个 level、Choice 0 个 option）可\DB 落盘，下次导出/调用时才 nổ。另本债触及 P0 红线“边界数据强制校验”，修复本身须走完整清单与独立核验。
