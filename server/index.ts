@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import { config } from './config';
 import apiRouter from './routes';
 import { pool } from './db';
@@ -16,6 +18,18 @@ app.use(express.urlencoded({ extended: true }));
 
 // 挂载主路由
 app.use('/api', apiRouter);
+
+// 托管前端构建产物
+const distPath = path.resolve(__dirname, '../dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.resolve(distPath, 'index.html'));
+  });
+}
 
 // 全局 404
 app.use((_req, res) => {
