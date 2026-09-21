@@ -1,4 +1,5 @@
 import { BatchNodeData } from "../types/workflow";
+import { resolveOpenRouterModel } from "./modelMap";
 
 export interface OpenRouterDecisionRequest {
   model: string;
@@ -55,14 +56,14 @@ export async function callOpenRouterDecisions(
         criteria: q.criteria
       };
     } else if (q.type === "noul") {
-      questionsPayload[q.id] = {
+      const noulPayload: Record<string, any> = {
         type: "noul",
-        instructions: q.instructions,
-        criteria: q.criteria || {
-          true: "Affirmative / Positive condition matched",
-          false: "Negative / Condition not matched"
-        }
+        instructions: q.instructions
       };
+      if (q.criteria?.true || q.criteria?.false) {
+        noulPayload.criteria = q.criteria;
+      }
+      questionsPayload[q.id] = noulPayload;
     }
   }
 
@@ -77,15 +78,8 @@ export async function callOpenRouterDecisions(
     statePayload = stateInput;
   }
 
-  // Normalize model ID: ensure typesafe/ namespace for OpenRouter catalog
-  let modelName = batchData.model || "typesafe/jev-1.13";
-  if (!modelName.includes("/")) {
-    if (modelName.startsWith("jev-")) {
-      modelName = "typesafe/" + modelName;
-    } else {
-      modelName = "typesafe/jev-1.13";
-    }
-  }
+  // Single source of truth model resolution for OpenRouter catalog
+  const modelName = resolveOpenRouterModel(batchData.model || "jev-latest");
 
   const response = await fetch("https://openrouter.ai/api/alpha/decisions", {
     method: "POST",

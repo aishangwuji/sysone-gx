@@ -1,5 +1,6 @@
 import { Node, Edge } from '@xyflow/react';
 import { BatchNodeData, ActionNodeData, ChoiceQuestion, ScoreQuestion, NoulQuestion } from '../types/workflow';
+import { resolveNativeModel, resolveOpenRouterModel } from './modelMap';
 
 export function generatePythonCode(nodes: Node[], edges: Edge[]): string {
   const batchNodes = nodes.filter((n: Node) => n.type === 'batchNode');
@@ -50,7 +51,7 @@ export function generatePythonCode(nodes: Node[], edges: Edge[]): string {
 
     code += '        }\n\n';
     code += '        ' + stepVar + ' = client.system_one(\n' +
-      '            model="' + (bData.model || 'jev-latest') + '",\n' +
+      '            model="' + resolveNativeModel(bData.model || 'jev-latest') + '",\n' +
       '            state=state_input,\n' +
       '            questions=' + questionsVar + ',\n' +
       '        )\n';
@@ -91,14 +92,27 @@ export function generateTypeScriptCode(nodes: Node[], _edges: Edge[]): string {
   batchNodes.forEach((bNode, idx) => {
     const bData = bNode.data as BatchNodeData;
     const questionsObj: Record<string, any> = {};
-    bData.questions.forEach((q) => { questionsObj[q.id] = q; });
+    bData.questions.forEach((q) => {
+      const qPayload: Record<string, any> = {
+        type: q.type,
+        instructions: q.instructions
+      };
+      if (q.type === 'noul') {
+        if (q.criteria?.true || q.criteria?.false) {
+          qPayload.criteria = q.criteria;
+        }
+      } else if (q.criteria !== undefined) {
+        qPayload.criteria = q.criteria;
+      }
+      questionsObj[q.id] = qPayload;
+    });
 
     code += '  // Step ' + (idx + 1) + ': ' + (bData.title || bNode.id) + '\n' +
       '  const response_' + (idx + 1) + ' = await fetch("https://api.typesafe.ai/v1/systemone", {\n' +
       '    method: "POST",\n' +
       '    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.TYPESAFE_API_KEY}` },\n' +
       '    body: JSON.stringify({\n' +
-      '      model: "' + (bData.model || 'jev-latest') + '",\n' +
+      '      model: "' + resolveNativeModel(bData.model || 'jev-latest') + '",\n' +
       '      state: stateInput,\n' +
       '      questions: ' + JSON.stringify(questionsObj, null, 8).replace(/\n/g, '\n      ') + '\n' +
       '    })\n' +
@@ -127,14 +141,21 @@ export function generateOpenRouterCode(nodes: Node[], _edges: Edge[]): string {
     const bData = bNode.data as BatchNodeData;
     const questionsPayload: Record<string, any> = {};
     bData.questions.forEach((q) => {
-      questionsPayload[q.id] = {
+      const qPayload: Record<string, any> = {
         type: q.type,
-        instructions: q.instructions,
-        criteria: q.criteria
+        instructions: q.instructions
       };
+      if (q.type === 'noul') {
+        if (q.criteria?.true || q.criteria?.false) {
+          qPayload.criteria = q.criteria;
+        }
+      } else if (q.criteria !== undefined) {
+        qPayload.criteria = q.criteria;
+      }
+      questionsPayload[q.id] = qPayload;
     });
 
-    const modelName = bData.model && bData.model.startsWith('typesafe/') ? bData.model : 'typesafe/jev-1.13';
+    const modelName = resolveOpenRouterModel(bData.model || 'jev-latest');
 
     code += '  // Step ' + (idx + 1) + ': ' + (bData.title || bNode.id) + '\n' +
       '  const response_' + (idx + 1) + ' = await fetch("https://openrouter.ai/api/alpha/decisions", {\n' +
