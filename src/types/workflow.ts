@@ -14,6 +14,7 @@ export interface StructuredCriteria {
 export type ChoiceCriteriaValue = EntryType;
 
 export interface ChoiceQuestion {
+  _uid?: string;
   id: string;
   type: 'choice';
   instructions: EntryType;
@@ -21,6 +22,7 @@ export interface ChoiceQuestion {
 }
 
 export interface ScoreQuestion {
+  _uid?: string;
   id: string;
   type: 'score';
   instructions: EntryType;
@@ -28,6 +30,7 @@ export interface ScoreQuestion {
 }
 
 export interface NoulQuestion {
+  _uid?: string;
   id: string;
   type: 'noul';
   instructions: EntryType;

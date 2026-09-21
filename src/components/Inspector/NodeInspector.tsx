@@ -118,7 +118,8 @@ export function NodeInspector() {
   }
 
   const bData = selectedNode.data as unknown as BatchNodeData;
-  const selectedQ = bData.questions?.find((q) => q.id === selectedQuestionId) || bData.questions?.[0];
+  const selectedQ = bData.questions?.find((q) => (q._uid && q._uid === selectedQuestionId) || q.id === selectedQuestionId) || bData.questions?.[0];
+  const qTargetKey = selectedQ ? (selectedQ._uid || selectedQ.id) : '';
 
   const downstreamBatchNodes = nodes.filter(
     (n) => n.type === 'batchNode' && edges.some((e) => e.source === selectedNode.id && e.target === n.id)
@@ -256,19 +257,22 @@ export function NodeInspector() {
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {bData.questions.map((q) => (
-            <button
-              key={q.id}
-              onClick={() => selectNode(selectedNode.id, q.id)}
-              className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors ${
-                selectedQ?.id === q.id
-                  ? 'bg-primary text-white font-bold'
-                  : 'bg-[#151821] text-gray-400 hover:bg-[#1C202C]'
-              }`}
-            >
-              {q.id}
-            </button>
-          ))}
+          {bData.questions.map((q, idx) => {
+            const isSelected = selectedQ ? ((q._uid && q._uid === selectedQ._uid) || q.id === selectedQ.id) : false;
+            return (
+              <button
+                key={q._uid || q.id || idx}
+                onClick={() => selectNode(selectedNode.id, q._uid || q.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors ${
+                  isSelected
+                    ? 'bg-primary text-white font-bold'
+                    : 'bg-[#151821] text-gray-400 hover:bg-[#1C202C]'
+                }`}
+              >
+                {q.id || `问题 #${idx + 1}`}
+              </button>
+            );
+          })}
         </div>
 
         {selectedQ && (
@@ -279,7 +283,7 @@ export function NodeInspector() {
               </span>
               {bData.questions.length > 1 && (
                 <button
-                  onClick={() => removeQuestionFromBatch(selectedNode.id, selectedQ.id)}
+                  onClick={() => removeQuestionFromBatch(selectedNode.id, qTargetKey)}
                   className="text-rose-400 hover:text-rose-300 text-[11px] flex items-center gap-1"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -293,7 +297,7 @@ export function NodeInspector() {
               <input
                 type="text"
                 value={selectedQ.id}
-                onChange={(e) => updateQuestionInBatch(selectedNode.id, selectedQ.id, { id: e.target.value })}
+                onChange={(e) => updateQuestionInBatch(selectedNode.id, qTargetKey, { id: e.target.value })}
                 className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-xs font-mono text-gray-200 focus:outline-none"
               />
             </div>
@@ -303,7 +307,7 @@ export function NodeInspector() {
               <textarea
                 rows={2}
                 value={formatEntryForDisplay(selectedQ.instructions)}
-                onChange={(e) => updateQuestionInBatch(selectedNode.id, selectedQ.id, {
+                onChange={(e) => updateQuestionInBatch(selectedNode.id, qTargetKey, {
                   instructions: parseSmartEntry(e.target.value, selectedQ.instructions)
                 })}
                 placeholder="支持输入描述文本或结构化 JSON 对象"
@@ -327,8 +331,8 @@ export function NodeInspector() {
                       onClick={() => {
                         const optCount = Object.keys(selectedQ.criteria).length;
                         const optKey = optCount === 0 ? 'first_option' : 'option_' + (optCount + 1);
-                        const newCriteria = { ...selectedQ.criteria, [optKey]: '选项定义描述 (what)' };
-                        updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                        const newCriteria = { ...selectedQ.criteria, [optKey]: '' };
+                        updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                       }}
                       className="text-[11px] text-primary hover:text-primary/80 font-medium"
                     >
@@ -358,7 +362,7 @@ export function NodeInspector() {
                             onClick={() => {
                               const newCriteria = { ...selectedQ.criteria };
                               delete newCriteria[opt];
-                              updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                              updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                             }}
                             className="text-gray-500 hover:text-rose-400 p-0.5"
                             title="删除选项"
@@ -373,7 +377,7 @@ export function NodeInspector() {
                         onChange={(e) => {
                           const parsed = parseSmartEntry(e.target.value, desc);
                           const newCriteria = { ...selectedQ.criteria, [opt]: parsed };
-                          updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                          updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                         }}
                         placeholder="支持输入描述或 JSON 对象 {what, not_for, examples}"
                         className="w-full bg-[#0F1118] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300"
@@ -393,9 +397,8 @@ export function NodeInspector() {
                       <button
                         type="button"
                         onClick={() => {
-                          const nextIdx = selectedQ.criteria.length;
-                          const newCriteria = [...selectedQ.criteria, { what: '第 ' + nextIdx + ' 档位定义' }];
-                          updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                          const newCriteria = [...selectedQ.criteria, { what: '' }];
+                          updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                         }}
                         className="text-[11px] text-blue-400 hover:text-blue-300 font-medium"
                       >
@@ -418,7 +421,7 @@ export function NodeInspector() {
                           const parsed = parseSmartEntry(e.target.value, lvl);
                           const newCriteria = [...selectedQ.criteria];
                           newCriteria[lIdx] = parsed;
-                          updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                          updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                         }}
                         placeholder="分档定义文本或 JSON 对象 {summary, signals, what}"
                         className="flex-1 bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300"
@@ -428,7 +431,7 @@ export function NodeInspector() {
                           type="button"
                           onClick={() => {
                             const newCriteria = selectedQ.criteria.filter((_, idx) => idx !== lIdx);
-                            updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                            updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                           }}
                           className="text-gray-500 hover:text-rose-400 p-1"
                           title="删除分档 (至少保留 2 档)"
@@ -460,7 +463,7 @@ export function NodeInspector() {
                         value={selectedQ.thresholds?.yes ?? DEFAULT_NOUL_YES}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value);
-                          updateQuestionInBatch(selectedNode.id, selectedQ.id, {
+                          updateQuestionInBatch(selectedNode.id, qTargetKey, {
                             thresholds: {
                               yes: isNaN(val) ? DEFAULT_NOUL_YES : val,
                               no: selectedQ.thresholds?.no ?? DEFAULT_NOUL_NO
@@ -482,7 +485,7 @@ export function NodeInspector() {
                         value={selectedQ.thresholds?.no ?? DEFAULT_NOUL_NO}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value);
-                          updateQuestionInBatch(selectedNode.id, selectedQ.id, {
+                          updateQuestionInBatch(selectedNode.id, qTargetKey, {
                             thresholds: {
                               yes: selectedQ.thresholds?.yes ?? DEFAULT_NOUL_YES,
                               no: isNaN(val) ? DEFAULT_NOUL_NO : val
@@ -501,7 +504,7 @@ export function NodeInspector() {
                       onChange={(e) => {
                         const parsed = parseSmartEntry(e.target.value, selectedQ.criteria?.true);
                         const newCriteria = { ...selectedQ.criteria, true: parsed };
-                        updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                        updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                       }}
                       placeholder="判定为真的标准描述或 JSON"
                       className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300 mt-1"
@@ -515,7 +518,7 @@ export function NodeInspector() {
                       onChange={(e) => {
                         const parsed = parseSmartEntry(e.target.value, selectedQ.criteria?.false);
                         const newCriteria = { ...selectedQ.criteria, false: parsed };
-                        updateQuestionInBatch(selectedNode.id, selectedQ.id, { criteria: newCriteria });
+                        updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                       }}
                       placeholder="判定为假的标准描述或 JSON"
                       className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300 mt-1"

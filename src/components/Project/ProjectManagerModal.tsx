@@ -22,7 +22,7 @@ export function ProjectManagerModal() {
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
-  const [newTemplateType, setNewTemplateType] = useState('support_triage');
+  const [newTemplateType, setNewTemplateType] = useState('custom');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -172,7 +172,6 @@ export function ProjectManagerModal() {
                   onChange={(e) => setNewTemplateType(e.target.value)}
                   className="w-full bg-[#0F1118] border border-[#282D3D] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-primary"
                 >
-                  <option value="support_triage">{t.project.templateSupport}</option>
                   <option value="custom">{t.project.templateBlank}</option>
                 </select>
               </div>

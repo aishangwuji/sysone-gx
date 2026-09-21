@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { Node, Edge, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange, Connection, addEdge } from '@xyflow/react';
 import { Question, BatchNodeData, ActionNodeData, SimulationTrace } from '../types/workflow';
-import { SUPPORT_TRIAGE_NODES, SUPPORT_TRIAGE_EDGES, PRESET_STATES } from '../utils/defaultTemplates';
 import { Language, translations } from '../i18n/translations';
 
 import { projectsApi } from '../api/client';
@@ -61,11 +60,11 @@ interface WorkflowState {
 }
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
-  nodes: SUPPORT_TRIAGE_NODES,
-  edges: SUPPORT_TRIAGE_EDGES,
-  selectedNodeId: 'batch_primary',
-  selectedQuestionId: 'department',
-  testStateInput: PRESET_STATES[0].state,
+  nodes: [],
+  edges: [],
+  selectedNodeId: null,
+  selectedQuestionId: null,
+  testStateInput: '',
   isSimulating: false,
   simulationTrace: null,
   activeEdgeIds: [],
@@ -74,8 +73,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   t: translations['zh'],
 
   currentProjectId: null,
-  currentProjectName: '智能客服工单决策流 (示例)',
-  currentProjectDesc: '展示多问题并行批处理与置信度兜底能力',
+  currentProjectName: '未命名决策流',
+  currentProjectDesc: '',
   isProjectManagerOpen: false,
   isSaving: false,
   projectsList: [],
@@ -101,7 +100,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       currentProjectId: proj.id,
       currentProjectName: proj.name,
       currentProjectDesc: proj.description || '',
-      nodes: wf.nodes && wf.nodes.length > 0 ? wf.nodes : SUPPORT_TRIAGE_NODES,
+      nodes: wf.nodes && wf.nodes.length > 0 ? wf.nodes : [],
       edges: wf.edges || [],
       selectedNodeId: wf.nodes?.[0]?.id || null,
       selectedQuestionId: null,
@@ -110,13 +109,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
 
   createNewProject: async (params) => {
-    const defaultData = {
-      nodes: SUPPORT_TRIAGE_NODES,
-      edges: SUPPORT_TRIAGE_EDGES
-    };
     const created = await projectsApi.create({
       ...params,
-      workflowData: params.templateType === 'support_triage' ? defaultData : { nodes: [], edges: [] }
+      workflowData: { nodes: [], edges: [] }
     });
     await get().fetchUserProjects();
     await get().loadProjectById(created.id);
@@ -166,8 +161,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       set({
         currentProjectId: null,
         currentProjectName: '未命名决策流',
-        nodes: SUPPORT_TRIAGE_NODES,
-        edges: SUPPORT_TRIAGE_EDGES
+        nodes: [],
+        edges: []
       });
     }
   },
@@ -223,29 +218,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       type: 'batchNode',
       position: { x: 300 + Math.random() * 80, y: 200 + Math.random() * 80 },
       data: {
-        title: 'New Evaluation Batch',
-        description: 'Single parallel API call batch',
+        title: '',
+        description: '',
         model: 'jev-latest',
-        enableConfidenceFallback: true,
+        enableConfidenceFallback: false,
         confidenceRange: [0.30, 0.70],
         confidenceThreshold: 0.70,
-        questions: [
-          {
-            id: 'question_' + Date.now().toString().slice(-3),
-            type: 'choice',
-            instructions: 'Select the best matching category',
-            criteria: {
-              option_a: 'First scenario description',
-              option_b: 'Second scenario description'
-            }
-          }
-        ]
+        questions: []
       } as BatchNodeData
     };
     set({
       nodes: [...get().nodes, newNode],
       selectedNodeId: id,
-      selectedQuestionId: (newNode.data as BatchNodeData).questions[0].id
+      selectedQuestionId: null
     });
   },
 
@@ -256,11 +241,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       type: 'actionNode',
       position: { x: 650 + Math.random() * 80, y: 350 + Math.random() * 80 },
       data: {
-        title: 'New External Action',
+        title: '',
         actionType: 'webhook',
         config: {
-          endpoint: 'https://api.internal.com/dispatch',
-          message: 'Triggered from workflow completion'
+          endpoint: '',
+          message: ''
         }
       } as ActionNodeData
     };
@@ -300,33 +285,33 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
 
   addQuestionToBatch: (nodeId, questionType) => {
-    const qId = questionType + '_' + Date.now().toString().slice(-3);
+    const qUid = 'q_' + Math.random().toString(36).slice(2, 9);
     let newQuestion: Question;
     if (questionType === 'choice') {
       newQuestion = {
-        id: qId,
+        _uid: qUid,
+        id: '',
         type: 'choice',
-        instructions: 'What category does this input belong to?',
-        criteria: {
-          category_one: 'Description of category one',
-          category_two: 'Description of category two'
-        }
+        instructions: '',
+        criteria: {}
       };
     } else if (questionType === 'score') {
       newQuestion = {
-        id: qId,
+        _uid: qUid,
+        id: '',
         type: 'score',
-        instructions: 'Rate the severity or degree of this condition',
-        criteria: ['Low / None', 'Moderate', 'Critical / High']
+        instructions: '',
+        criteria: []
       };
     } else {
       newQuestion = {
-        id: qId,
+        _uid: qUid,
+        id: '',
         type: 'noul',
-        instructions: 'Does this condition hold true?',
+        instructions: '',
         criteria: {
-          true: 'Evidence explicitly supports the statement',
-          false: 'No evidence found'
+          true: '',
+          false: ''
         }
       };
     }
@@ -345,11 +330,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         }
         return n;
       }),
-      selectedQuestionId: qId
+      selectedQuestionId: qUid
     });
   },
 
-  updateQuestionInBatch: (nodeId, questionId, updated) => {
+  updateQuestionInBatch: (nodeId, questionKey, updated) => {
     set({
       nodes: get().nodes.map((n) => {
         if (n.id === nodeId && n.type === 'batchNode') {
@@ -358,7 +343,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
             ...n,
             data: {
               ...bData,
-              questions: bData.questions.map((q) => (q.id === questionId ? ({ ...q, ...updated } as Question) : q))
+              questions: bData.questions.map((q) => {
+                const isMatch = (q._uid && q._uid === questionKey) || q.id === questionKey;
+                return isMatch ? ({ ...q, ...updated } as Question) : q;
+              })
             }
           };
         }
@@ -367,7 +355,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     });
   },
 
-  removeQuestionFromBatch: (nodeId, questionId) => {
+  removeQuestionFromBatch: (nodeId, questionKey) => {
     set({
       nodes: get().nodes.map((n) => {
         if (n.id === nodeId && n.type === 'batchNode') {
@@ -376,7 +364,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
             ...n,
             data: {
               ...bData,
-              questions: bData.questions.filter((q) => q.id !== questionId)
+              questions: bData.questions.filter((q) => !((q._uid && q._uid === questionKey) || q.id === questionKey))
             }
           };
         }
@@ -454,10 +442,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   loadTemplate: () => {
     set({
-      nodes: SUPPORT_TRIAGE_NODES,
-      edges: SUPPORT_TRIAGE_EDGES,
-      selectedNodeId: 'batch_primary',
-      selectedQuestionId: 'department',
+      nodes: [],
+      edges: [],
+      selectedNodeId: null,
+      selectedQuestionId: null,
       simulationTrace: null,
       activeEdgeIds: [],
       activeNodeIds: []

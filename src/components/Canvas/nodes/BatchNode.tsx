@@ -48,28 +48,33 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
       </div>
 
       <div className="p-3 space-y-2.5 bg-[#0F1118]">
-        {bData.questions.map((q) => {
-          const isQSelected = isCurrentSelected && selectedQuestionId === q.id;
-          const qAns = simResult?.answers?.[q.id];
+        {bData.questions.length === 0 ? (
+          <div className="text-center py-4 text-gray-500 text-xs border border-dashed border-[#282D3D] rounded-lg">
+            暂无评估问题 (点击右侧添加)
+          </div>
+        ) : (
+          bData.questions.map((q, idx) => {
+            const isQSelected = isCurrentSelected && ((q._uid && q._uid === selectedQuestionId) || q.id === selectedQuestionId);
+            const qAns = simResult?.answers?.[q.id];
 
-          return (
-            <div
-              key={q.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                selectNode(id, q.id);
-              }}
-              className={"p-2.5 rounded-lg border text-left transition-colors cursor-pointer relative " + (isQSelected ? "border-primary/60 bg-[#1A1D2A]" : "border-[#232736] hover:border-[#32394D] bg-[#141722]")}
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={"text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold " + (q.type === "choice" ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : q.type === "score" ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30")}
-                  >
-                    {q.type}
-                  </span>
-                  <span className="text-xs font-mono font-semibold text-gray-300">{q.id}</span>
-                </div>
+            return (
+              <div
+                key={q._uid || q.id || idx}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selectNode(id, q._uid || q.id);
+                }}
+                className={"p-2.5 rounded-lg border text-left transition-colors cursor-pointer relative " + (isQSelected ? "border-primary/60 bg-[#1A1D2A]" : "border-[#232736] hover:border-[#32394D] bg-[#141722]")}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={"text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold " + (q.type === "choice" ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : q.type === "score" ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30")}
+                    >
+                      {q.type}
+                    </span>
+                    <span className="text-xs font-mono font-semibold text-gray-300">{q.id || '(未命名问题)'}</span>
+                  </div>
 
                 {qAns && (
                   <div className="flex items-center gap-1.5 text-[11px]">
@@ -227,7 +232,7 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
               )}
             </div>
           );
-        })}
+        }))}
       </div>
 
       {bData.enableConfidenceFallback && (

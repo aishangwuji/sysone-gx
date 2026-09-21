@@ -77,7 +77,6 @@ export const translations = {
     sandbox: {
       title: "Live Sandbox & Simulator",
       reset: "Reset",
-      loadPreset: "Load Sample Ticket / State",
       apiKeyLabel: "OpenRouter API Key (Optional for Live Jev Call)",
       apiKeyPlaceholder: "sk-or-v1-... (leave empty for simulated execution)",
       liveMode: "Live: typesafe/jev-1.13",
@@ -88,18 +87,18 @@ export const translations = {
       runningBtn: "Evaluating System One...",
       executionTrace: "Execution Trace",
       visitedCount: "Visited: {count} nodes",
-      noTraceYet: "No execution trace yet. Click \"Run Decision Trace\" to see path flow.",
-      emptyInputError: "Please provide test state content before running."
+      noTraceYet: "No trace history yet. Click \"Run Decision Trace\" to observe path animation and probabilities.",
+      emptyInputError: "Please enter state content before running simulation."
     },
     exportModal: {
       title: "Export Production Code",
-      subtitle: "Official TypeSafe System One SDK code",
+      subtitle: "Native integration code for TypeSafe System One SDK",
       tabPython: "Python SDK (typesafe_sdk)",
       tabOpenRouter: "OpenRouter Decisions (Alpha)",
       tabTs: "TypeScript / Node.js",
       tabJson: "Workflow DSL (JSON)",
       copyBtn: "Copy Code",
-      copiedBtn: "Copied!"
+      copiedBtn: "Copied to Clipboard!"
     },
     auth: {
       loginTitle: "Sign In to SysOne GX",
@@ -130,12 +129,11 @@ export const translations = {
       myProjects: "My Projects",
       newProject: "New Project",
       projectName: "Project Name",
-      projectNamePlaceholder: "e.g. Customer Support Triage Tree",
+      projectNamePlaceholder: "e.g. My Decision Tree",
       projectDesc: "Description (Optional)",
       projectDescPlaceholder: "Brief purpose of this decision tree...",
       templateType: "Template",
       templateBlank: "Blank Canvas",
-      templateSupport: "Customer Support Triage",
       createBtn: "Create Project",
       cancelBtn: "Cancel",
       saveBtn: "Save",
@@ -227,7 +225,6 @@ export const translations = {
     sandbox: {
       title: "实时决策沙盒与仿真",
       reset: "重置",
-      loadPreset: "载入预设工单 / 状态样本",
       apiKeyLabel: "OpenRouter API Key (可选，填入后将真实调用 Jev 模型)",
       apiKeyPlaceholder: "sk-or-v1-... (留空则默认启用本地高速仿真引擎)",
       liveMode: "真实 API 调用: typesafe/jev-1.13",
@@ -280,12 +277,11 @@ export const translations = {
       myProjects: "我的项目列表",
       newProject: "+ 新建项目",
       projectName: "项目名称",
-      projectNamePlaceholder: "如: 金融合规智能初筛决策树",
+      projectNamePlaceholder: "如: 我的智能决策树",
       projectDesc: "业务场景说明 (可选)",
       projectDescPlaceholder: "简述该决策流的核心业务目标与分流规则...",
       templateType: "初始模板",
       templateBlank: "空白自定义画布",
-      templateSupport: "智能客户服务分流 (预设)",
       createBtn: "创建项目",
       cancelBtn: "取消",
       saveBtn: "保存工作流",

@@ -67,108 +67,23 @@ export class AuthService {
       [userId, cleanUsername, cleanEmail, passwordHash, userNickname, ip || '']
     );
 
-    // 为新用户自动初始化一个默认的“智能客服分流决策树”示例项目
+    // 为新用户自动初始化一个空白项目
     const defaultProjectId = 'proj_' + crypto.randomBytes(12).toString('hex');
     const defaultWorkflowData = {
-      nodes: [
-        {
-          id: 'batch_primary',
-          type: 'batchNode',
-          position: { x: 250, y: 120 },
-          data: {
-            title: '智能客服第一级并行评估',
-            model: 'jev-latest',
-            enableConfidenceFallback: true,
-            confidenceRange: [0.30, 0.70],
-            confidenceThreshold: 0.70,
-            questions: [
-              {
-                id: 'department',
-                type: 'choice',
-                instructions: '根据客户的诉求和问题描述，将工单精准分流至专门职能部门。',
-                criteria: {
-                  returns: { what: '退换货申请、退款退货政策咨询、尺寸不合要求换货' },
-                  shipping: { what: '包裹物流轨迹、清关进度、快递派送延迟' },
-                  billing: { what: '扣款疑问、发票开具申请、支付方式咨询' },
-                  other: { what: '无法归入上述类别的通用咨询' }
-                }
-              },
-              {
-                id: 'frustration',
-                type: 'score',
-                instructions: '评估客户在沟通文本中表达出的受挫和愤怒程度。',
-                criteria: [
-                  { what: '情绪平和友善，正常提出业务咨询。' },
-                  { what: '略显焦急但保持克制礼貌。' },
-                  { what: '言辞激烈，带有强烈不满、警告或投诉要求。' }
-                ]
-              }
-            ]
-          }
-        },
-        {
-          id: 'act_returns',
-          type: 'actionNode',
-          position: { x: 50, y: 450 },
-          data: {
-            title: '触发售后退换货流程',
-            actionType: 'webhook',
-            config: { endpoint: 'https://api.internal/returns/triage' }
-          }
-        },
-        {
-          id: 'act_shipping',
-          type: 'actionNode',
-          position: { x: 300, y: 450 },
-          data: {
-            title: '查询物流中台最新动态',
-            actionType: 'database_update',
-            config: { status: 'shipping_inquiry' }
-          }
-        },
-        {
-          id: 'act_supervisor',
-          type: 'actionNode',
-          position: { x: 550, y: 450 },
-          data: {
-            title: '转交高级主管人工通道',
-            actionType: 'human_review',
-            config: { team: 'Supervisor-Tier3' }
-          }
-        }
-      ],
-      edges: [
-        {
-          id: 'e1',
-          source: 'batch_primary',
-          sourceHandle: 'q_department_returns',
-          target: 'act_returns'
-        },
-        {
-          id: 'e2',
-          source: 'batch_primary',
-          sourceHandle: 'q_department_shipping',
-          target: 'act_shipping'
-        },
-        {
-          id: 'e3',
-          source: 'batch_primary',
-          sourceHandle: 'fallback_handle',
-          target: 'act_supervisor'
-        }
-      ]
+      nodes: [],
+      edges: []
     };
 
     await query(
       `INSERT INTO sysone_projects (
         id, user_id, name, description, icon, workflow_data, template_type,
         version, is_active, created_at, updated_at, created_by, updated_by, is_deleted
-      ) VALUES ($1, $2, $3, $4, 'FolderKanban', $5, 'support_triage', 1, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $2, $2, FALSE)`,
+      ) VALUES ($1, $2, $3, $4, 'FolderKanban', $5, 'custom', 1, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $2, $2, FALSE)`,
       [
         defaultProjectId,
         userId,
-        '智能客服工单决策流 (示例)',
-        '系统自动创建的入门决策流示例，展示多问题并行批处理与置信度兜底能力。',
+        '我的项目',
+        '',
         JSON.stringify(defaultWorkflowData)
       ]
     );
