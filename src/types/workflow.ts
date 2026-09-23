@@ -70,6 +70,60 @@ export interface BatchNodeData {
   [key: string]: unknown;
 }
 
+export interface StructuredInstructions {
+  question?: string;
+  focus?: string;
+  field?: {
+    name?: string;
+    type?: string;
+    unit?: string;
+    description?: string;
+  };
+  [key: string]: any;
+}
+
+export interface CompositeDimension {
+  id: string;
+  questionId: string;
+  label: string;
+  weight: number;
+  maxLevel: number; // 默认 top_level = len(criteria) - 1
+}
+
+export interface CompositeThresholdBranch {
+  id: string;
+  label: string;
+  operator: '>=' | '<=' | 'range';
+  value: number;
+  range?: [number, number];
+}
+
+export interface CompositeNodeData {
+  title: string;
+  description?: string;
+  dimensions: CompositeDimension[];
+  branches: CompositeThresholdBranch[];
+  simulationResult?: {
+    compositeScore?: number;
+    normalizedScores?: Record<string, number>;
+    activeBranchId?: string;
+  };
+  [key: string]: unknown;
+}
+
+export interface EdgeConfidenceGate {
+  enabled: boolean;
+  operator: '>=' | '<=' | 'range';
+  threshold: number;
+  range?: [number, number];
+}
+
+export interface EdgeData {
+  label?: string;
+  confidenceGate?: EdgeConfidenceGate;
+  [key: string]: unknown;
+}
+
 export interface ActionNodeData {
   title: string;
   actionType: 'webhook' | 'human_review' | 'llm_escalation' | 'database_update' | 'return_response';

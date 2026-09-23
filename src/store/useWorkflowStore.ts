@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Node, Edge, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange, Connection, addEdge } from '@xyflow/react';
-import { Question, BatchNodeData, ActionNodeData, SimulationTrace } from '../types/workflow';
+import { Question, BatchNodeData, ActionNodeData, CompositeNodeData, EdgeData, SimulationTrace } from '../types/workflow';
 import { Language, translations } from '../i18n/translations';
 
 import { projectsApi } from '../api/client';
@@ -46,10 +46,16 @@ interface WorkflowState {
   saveCurrentProject: () => Promise<void>;
   deleteProjectById: (id: string) => Promise<void>;
 
+  selectedEdgeId: string | null;
+  selectEdge: (edgeId: string | null) => void;
+  updateEdgeData: (edgeId: string, data: Partial<EdgeData>) => void;
+
   addBatchNode: () => void;
   addActionNode: () => void;
+  addCompositeNode: () => void;
   updateBatchNodeData: (nodeId: string, data: Partial<BatchNodeData>) => void;
   updateActionNodeData: (nodeId: string, data: Partial<ActionNodeData>) => void;
+  updateCompositeNodeData: (nodeId: string, data: Partial<CompositeNodeData>) => void;
   addQuestionToBatch: (nodeId: string, questionType: 'choice' | 'score' | 'noul') => void;
   updateQuestionInBatch: (nodeId: string, questionId: string, updated: Partial<Question>) => void;
   removeQuestionFromBatch: (nodeId: string, questionId: string) => void;
@@ -65,6 +71,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   edges: [],
   selectedNodeId: null,
   selectedQuestionId: null,
+  selectedEdgeId: null,
   testStateInput: '',
   isSimulating: false,
   simulationTrace: null,
@@ -198,7 +205,24 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   selectNode: (nodeId, questionId = null) => {
     set({
       selectedNodeId: nodeId,
-      selectedQuestionId: questionId
+      selectedQuestionId: questionId,
+      selectedEdgeId: null
+    });
+  },
+
+  selectEdge: (edgeId) => {
+    set({
+      selectedEdgeId: edgeId,
+      selectedNodeId: edgeId ? null : get().selectedNodeId,
+      selectedQuestionId: null
+    });
+  },
+
+  updateEdgeData: (edgeId, data) => {
+    set({
+      edges: get().edges.map((e) =>
+        e.id === edgeId ? { ...e, data: { ...((e.data as object) || {}), ...data } } : e
+      )
     });
   },
 
@@ -254,6 +278,45 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       nodes: [...get().nodes, newNode],
       selectedNodeId: id,
       selectedQuestionId: null
+    });
+  },
+
+  addCompositeNode: () => {
+    const id = 'composite_' + Date.now().toString().slice(-4);
+    const newNode: Node = {
+      id,
+      type: 'compositeNode',
+      position: { x: 550 + Math.random() * 80, y: 280 + Math.random() * 80 },
+      data: {
+        title: '复合加权评分算子',
+        description: '归一化加权多个 Score 维度聚合计算',
+        dimensions: [],
+        branches: [
+          { id: 'branch_high', label: '高分区间 (>= 0.70)', operator: '>=', value: 0.70 },
+          { id: 'branch_mid', label: '中分区间 (0.40 ~ 0.70)', operator: 'range', value: 0.40, range: [0.40, 0.70] },
+          { id: 'branch_low', label: '低分区间 (< 0.40)', operator: '<=', value: 0.40 }
+        ]
+      } as CompositeNodeData
+    };
+    set({
+      nodes: [...get().nodes, newNode],
+      selectedNodeId: id,
+      selectedQuestionId: null,
+      selectedEdgeId: null
+    });
+  },
+
+  updateCompositeNodeData: (nodeId, data) => {
+    set({
+      nodes: get().nodes.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: { ...node.data, ...data }
+          };
+        }
+        return node;
+      })
     });
   },
 

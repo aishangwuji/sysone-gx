@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import {
   Layers,
   ArrowRightCircle,
+  Calculator,
   Globe,
   FolderKanban,
   Save,
@@ -26,6 +27,7 @@ export function Header() {
     isSaving,
     addBatchNode,
     addActionNode,
+    addCompositeNode,
     language,
     setLanguage,
     t
@@ -123,6 +125,14 @@ export function Header() {
           >
             <ArrowRightCircle className="w-3.5 h-3.5" />
             <span>{t.header.addAction}</span>
+          </button>
+          <button
+            onClick={addCompositeNode}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#161924] text-pink-400 hover:bg-pink-500/10 border border-pink-500/30 transition-colors"
+            title="添加基于多个 Score 维度的复合加权聚合节点"
+          >
+            <Calculator className="w-3.5 h-3.5" />
+            <span>复合算子</span>
           </button>
         </div>
 

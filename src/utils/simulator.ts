@@ -1,7 +1,18 @@
 import { Node, Edge } from '@xyflow/react';
-import { BatchNodeData, NoulQuestion, SimulationTrace } from '../types/workflow';
+import { BatchNodeData, NoulQuestion, CompositeNodeData, SimulationTrace } from '../types/workflow';
 import { DEFAULT_NOUL_YES, DEFAULT_NOUL_NO } from './constants';
 import { executeBatchDecision, ProviderConfig } from './decisionService';
+
+function checkConfidenceGate(gate: any, confidence: number | undefined): boolean {
+  if (!gate?.enabled || confidence === undefined) return true;
+  if (gate.operator === 'range' && gate.range) {
+    return confidence >= gate.range[0] && confidence <= gate.range[1];
+  }
+  if (gate.operator === '<=') {
+    return confidence <= (gate.threshold ?? 0.85);
+  }
+  return confidence >= (gate.threshold ?? 0.85);
+}
 
 /**
  * High-fidelity heuristic simulator for TypeSafe Jev model.
@@ -166,15 +177,31 @@ export async function runWorkflowSimulation(
 
         for (const edge of outgoingEdges) {
           const handle = edge.sourceHandle || '';
+          const edgeData = (edge.data as any) || {};
+          const gate = edgeData.confidenceGate;
+
           if (handle.startsWith('q_')) {
             const matchedQ = bData.questions.find((q) => handle.startsWith('q_' + q.id + '_'));
             if (matchedQ) {
               const optionKey = handle.substring(('q_' + matchedQ.id + '_').length);
               const qAns = batchAnswers[matchedQ.id];
+              const confVal = matchedQ.type === 'noul' ? qAns?.noul : qAns?.confidence;
+
+              // 校验置信度门控条件
+              if (!checkConfidenceGate(gate, confVal)) {
+                continue;
+              }
 
               if (matchedQ.type === 'choice' && qAns?.choice === optionKey) {
                 activeEdgeIds.push(edge.id);
                 nextNode = nodeMap.get(edge.target);
+                if (gate?.enabled) {
+                  logs.push({
+                    nodeId: currentNode.id,
+                    type: 'decision',
+                    message: `连线 [${edge.id}] 满足置信度门控 (${gate.operator} ${gate.threshold ?? ''}): 激活分支 -> ${edge.target}`
+                  });
+                }
                 if (edge.target.includes('reject')) {
                   rejectReasons.push(`命中违规分类 [${matchedQ.id}]: 归类为 ${optionKey}`);
                 } else if (edge.target.includes('review')) {
@@ -185,6 +212,13 @@ export async function runWorkflowSimulation(
                 if (Math.round(qAns?.score) === parseInt(optionKey, 10)) {
                   activeEdgeIds.push(edge.id);
                   nextNode = nodeMap.get(edge.target);
+                  if (gate?.enabled) {
+                    logs.push({
+                      nodeId: currentNode.id,
+                      type: 'decision',
+                      message: `连线 [${edge.id}] 满足置信度门控: 激活分支 -> ${edge.target}`
+                    });
+                  }
                   if (edge.target.includes('reject')) {
                     rejectReasons.push(`评分超标 [${matchedQ.id}]: 档位 ${optionKey}`);
                   } else if (edge.target.includes('review')) {
@@ -199,6 +233,13 @@ export async function runWorkflowSimulation(
                 if ((optionKey === 'yes' && (qAns?.noul ?? 0) >= yesT) || (optionKey === 'no' && (qAns?.noul ?? 0) <= noT)) {
                   activeEdgeIds.push(edge.id);
                   nextNode = nodeMap.get(edge.target);
+                  if (gate?.enabled) {
+                    logs.push({
+                      nodeId: currentNode.id,
+                      type: 'decision',
+                      message: `连线 [${edge.id}] 满足概率/置信度门控: 激活分支 -> ${edge.target}`
+                    });
+                  }
                   if (optionKey === 'yes' && edge.target.includes('reject')) {
                     rejectReasons.push(`命中高概率违规 [${matchedQ.id}]: 概率 ${((qAns?.noul ?? 0) * 100).toFixed(0)}% (>= ${(yesT * 100).toFixed(0)}%)`);
                   }
@@ -226,6 +267,73 @@ export async function runWorkflowSimulation(
       };
 
       currentNode = nextNode;
+      continue;
+    }
+
+    if (currentNode.type === 'compositeNode') {
+      const cData = currentNode.data as unknown as CompositeNodeData;
+      let compositeScore = 0;
+      const normalizedScores: Record<string, number> = {};
+
+      const dimensions = cData.dimensions || [];
+      for (const dim of dimensions) {
+        const qAns = answers[dim.questionId];
+        const rawScore = qAns?.score ?? 0;
+        const maxLevel = dim.maxLevel > 0 ? dim.maxLevel : 1;
+        const normalized = Math.min(1.0, Math.max(0.0, rawScore / maxLevel));
+        normalizedScores[dim.questionId] = normalized;
+        compositeScore += (dim.weight || 0) * normalized;
+      }
+
+      logs.push({
+        nodeId: currentNode.id,
+        type: 'decision',
+        message: `[复合算子] ${cData.title || currentNode.id} 加权聚合计算完成: 综合得分 = ${compositeScore.toFixed(3)}`
+      });
+
+      // 匹配分流分支
+      let activeBranchId: string | undefined = undefined;
+      const branches = cData.branches || [];
+      for (const branch of branches) {
+        if (branch.operator === '>=' && compositeScore >= branch.value) {
+          activeBranchId = branch.id;
+          break;
+        } else if (branch.operator === 'range' && branch.range && compositeScore >= branch.range[0] && compositeScore < branch.range[1]) {
+          activeBranchId = branch.id;
+          break;
+        } else if (branch.operator === '<=' && compositeScore <= branch.value) {
+          activeBranchId = branch.id;
+          break;
+        }
+      }
+
+      if (!activeBranchId && branches.length > 0) {
+        activeBranchId = branches[0].id;
+      }
+
+      let nextNode: Node | undefined = undefined;
+      const outgoingEdges = edges.filter((e) => e.source === currentNode?.id);
+      const matchedEdge = outgoingEdges.find((e) => e.sourceHandle === activeBranchId);
+
+      if (matchedEdge) {
+        activeEdgeIds.push(matchedEdge.id);
+        nextNode = nodeMap.get(matchedEdge.target);
+      } else if (outgoingEdges.length > 0) {
+        activeEdgeIds.push(outgoingEdges[0].id);
+        nextNode = nodeMap.get(outgoingEdges[0].target);
+      }
+
+      currentNode.data = {
+        ...currentNode.data,
+        simulationResult: {
+          compositeScore,
+          normalizedScores,
+          activeBranchId
+        }
+      };
+
+      currentNode = nextNode;
+      continue;
     }
   }
 

@@ -1,38 +1,14 @@
 import React from 'react';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
-import { BatchNodeData, ActionNodeData, EntryType } from '../../types/workflow';
+import { BatchNodeData, ActionNodeData, CompositeNodeData } from '../../types/workflow';
 import { ShieldAlert, Trash2, Settings, Zap } from 'lucide-react';
 import { DualRangeSlider } from '../common/DualRangeSlider';
 import { resolveNativeModel, resolveOpenRouterModel } from '../../utils/modelMap';
 import { DEFAULT_NOUL_YES, DEFAULT_NOUL_NO } from '../../utils/constants';
-
-function parseSmartEntry(input: string, prevValue?: unknown): EntryType {
-  const trimmed = input.trim();
-  if (trimmed === 'null') return null;
-  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      // keep fallback
-    }
-  }
-  if (prevValue && typeof prevValue === 'object' && !Array.isArray(prevValue)) {
-    return { ...(prevValue as Record<string, any>), what: input };
-  }
-  return input;
-}
-
-function formatEntryForDisplay(val: unknown): string {
-  if (val === null || val === undefined) return '';
-  if (typeof val === 'string') return val;
-  if (val && typeof val === 'object' && !Array.isArray(val)) {
-    const obj = val as Record<string, any>;
-    if (obj.what && Object.keys(obj).length === 1) {
-      return obj.what;
-    }
-  }
-  return JSON.stringify(val);
-}
+import { EdgeInspector } from './EdgeInspector';
+import { CompositeInspector } from './CompositeInspector';
+import { StructuredCriteriaEditor } from './StructuredCriteriaEditor';
+import { StructuredInstructionsEditor } from './StructuredInstructionsEditor';
 
 export function NodeInspector() {
   const {
@@ -40,6 +16,7 @@ export function NodeInspector() {
     edges,
     selectedNodeId,
     selectedQuestionId,
+    selectedEdgeId,
     selectNode,
     updateBatchNodeData,
     updateActionNodeData,
@@ -51,6 +28,10 @@ export function NodeInspector() {
     t
   } = useWorkflowStore();
 
+  if (selectedEdgeId) {
+    return <EdgeInspector />;
+  }
+
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
   if (!selectedNode) {
@@ -59,6 +40,15 @@ export function NodeInspector() {
         <Settings className="w-8 h-8 mx-auto mb-2 opacity-40" />
         <p className="text-xs">{t.inspector.emptyPrompt}</p>
       </div>
+    );
+  }
+
+  if (selectedNode.type === 'compositeNode') {
+    return (
+      <CompositeInspector
+        nodeId={selectedNode.id}
+        data={selectedNode.data as unknown as CompositeNodeData}
+      />
     );
   }
 
@@ -302,18 +292,11 @@ export function NodeInspector() {
               />
             </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-gray-400 mb-1">{t.inspector.instructions}</label>
-              <textarea
-                rows={2}
-                value={formatEntryForDisplay(selectedQ.instructions)}
-                onChange={(e) => updateQuestionInBatch(selectedNode.id, qTargetKey, {
-                  instructions: parseSmartEntry(e.target.value, selectedQ.instructions)
-                })}
-                placeholder="支持输入描述文本或结构化 JSON 对象"
-                className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-xs text-gray-200 focus:outline-none"
-              />
-            </div>
+            {/* Instructions 编辑 */}
+            <StructuredInstructionsEditor
+              value={selectedQ.instructions}
+              onChange={(newInst) => updateQuestionInBatch(selectedNode.id, qTargetKey, { instructions: newInst })}
+            />
 
             <div>
               <label className="block text-[11px] font-medium text-gray-400 mb-1">
@@ -321,7 +304,7 @@ export function NodeInspector() {
               </label>
 
               {selectedQ.type === 'choice' && (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-400">
                       选项数量: {Object.keys(selectedQ.criteria).length} / 255
@@ -352,10 +335,17 @@ export function NodeInspector() {
                     </div>
                   )}
 
-                  {Object.entries(selectedQ.criteria).map(([opt, desc], oidx) => (
-                    <div key={opt + oidx} className="p-2 bg-[#151821] rounded border border-[#282D3D] space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono text-primary font-bold">{opt}</span>
+                  <div className="space-y-2">
+                    {Object.entries(selectedQ.criteria).map(([opt, desc], oidx) => (
+                      <div key={opt + oidx} className="relative group">
+                        <StructuredCriteriaEditor
+                          label={opt}
+                          value={desc}
+                          onChange={(newVal) => {
+                            const newCriteria = { ...selectedQ.criteria, [opt]: newVal };
+                            updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
+                          }}
+                        />
                         {Object.keys(selectedQ.criteria).length > 1 && (
                           <button
                             type="button"
@@ -364,31 +354,20 @@ export function NodeInspector() {
                               delete newCriteria[opt];
                               updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                             }}
-                            className="text-gray-500 hover:text-rose-400 p-0.5"
+                            className="absolute top-2 right-2 text-gray-500 hover:text-rose-400 p-0.5"
                             title="删除选项"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
                         )}
                       </div>
-                      <input
-                        type="text"
-                        value={formatEntryForDisplay(desc)}
-                        onChange={(e) => {
-                          const parsed = parseSmartEntry(e.target.value, desc);
-                          const newCriteria = { ...selectedQ.criteria, [opt]: parsed };
-                          updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
-                        }}
-                        placeholder="支持输入描述或 JSON 对象 {what, not_for, examples}"
-                        className="w-full bg-[#0F1118] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300"
-                      />
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
 
               {selectedQ.type === 'score' && (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-400">
                       {t.inspector.scoreLimitHint.replace('{count}', String(selectedQ.criteria.length))}
@@ -397,7 +376,7 @@ export function NodeInspector() {
                       <button
                         type="button"
                         onClick={() => {
-                          const newCriteria = [...selectedQ.criteria, { what: '' }];
+                          const newCriteria = [...selectedQ.criteria, ''];
                           updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                         }}
                         className="text-[11px] text-blue-400 hover:text-blue-300 font-medium"
@@ -411,41 +390,40 @@ export function NodeInspector() {
                     {t.inspector.scoreLevelsDesc}
                   </p>
 
-                  {selectedQ.criteria.map((lvl, lIdx) => (
-                    <div key={lIdx} className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-blue-400 font-bold w-6 text-right">{lIdx}:</span>
-                      <input
-                        type="text"
-                        value={formatEntryForDisplay(lvl)}
-                        onChange={(e) => {
-                          const parsed = parseSmartEntry(e.target.value, lvl);
-                          const newCriteria = [...selectedQ.criteria];
-                          newCriteria[lIdx] = parsed;
-                          updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
-                        }}
-                        placeholder="分档定义文本或 JSON 对象 {summary, signals, what}"
-                        className="flex-1 bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300"
-                      />
-                      {selectedQ.criteria.length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newCriteria = selectedQ.criteria.filter((_, idx) => idx !== lIdx);
+                  <div className="space-y-2">
+                    {selectedQ.criteria.map((lvl, lIdx) => (
+                      <div key={lIdx} className="relative group">
+                        <StructuredCriteriaEditor
+                          label={`级别 ${lIdx}`}
+                          isScoreLevel={true}
+                          value={lvl}
+                          onChange={(newVal) => {
+                            const newCriteria = [...selectedQ.criteria];
+                            newCriteria[lIdx] = newVal;
                             updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                           }}
-                          className="text-gray-500 hover:text-rose-400 p-1"
-                          title="删除分档 (至少保留 2 档)"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                        />
+                        {selectedQ.criteria.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newCriteria = selectedQ.criteria.filter((_, idx) => idx !== lIdx);
+                              updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
+                            }}
+                            className="absolute top-2 right-2 text-gray-500 hover:text-rose-400 p-0.5"
+                            title="删除分档 (至少保留 2 档)"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {selectedQ.type === 'noul' && (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <p className="text-[10px] text-gray-500">
                     {t.inspector.noulDesc}
                   </p>
@@ -496,32 +474,23 @@ export function NodeInspector() {
                       />
                     </div>
                   </div>
-                  <div>
-                    <span className="text-xs font-mono text-emerald-400 font-bold">{t.inspector.criteriaTrue}</span>
-                    <input
-                      type="text"
-                      value={formatEntryForDisplay(selectedQ.criteria?.true)}
-                      onChange={(e) => {
-                        const parsed = parseSmartEntry(e.target.value, selectedQ.criteria?.true);
-                        const newCriteria = { ...selectedQ.criteria, true: parsed };
+
+                  <div className="space-y-2 pt-1 border-t border-[#232738]">
+                    <StructuredCriteriaEditor
+                      label={t.inspector.criteriaTrue}
+                      value={selectedQ.criteria?.true ?? ''}
+                      onChange={(newVal) => {
+                        const newCriteria = { ...selectedQ.criteria, true: newVal };
                         updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                       }}
-                      placeholder="判定为真的标准描述或 JSON"
-                      className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300 mt-1"
                     />
-                  </div>
-                  <div>
-                    <span className="text-xs font-mono text-rose-400 font-bold">{t.inspector.criteriaFalse}</span>
-                    <input
-                      type="text"
-                      value={formatEntryForDisplay(selectedQ.criteria?.false)}
-                      onChange={(e) => {
-                        const parsed = parseSmartEntry(e.target.value, selectedQ.criteria?.false);
-                        const newCriteria = { ...selectedQ.criteria, false: parsed };
+                    <StructuredCriteriaEditor
+                      label={t.inspector.criteriaFalse}
+                      value={selectedQ.criteria?.false ?? ''}
+                      onChange={(newVal) => {
+                        const newCriteria = { ...selectedQ.criteria, false: newVal };
                         updateQuestionInBatch(selectedNode.id, qTargetKey, { criteria: newCriteria });
                       }}
-                      placeholder="判定为假的标准描述或 JSON"
-                      className="w-full bg-[#151821] border border-[#282D3D] rounded px-2 py-1 text-[11px] text-gray-300 mt-1"
                     />
                   </div>
                 </div>

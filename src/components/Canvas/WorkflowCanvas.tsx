@@ -5,16 +5,19 @@ import {
   Controls,
   MiniMap,
   BackgroundVariant,
-  ConnectionMode
+  ConnectionMode,
+  Edge
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { BatchNode } from './nodes/BatchNode';
 import { ActionNode } from './nodes/ActionNode';
+import { CompositeNode } from './nodes/CompositeNode';
 
 const nodeTypes = {
   batchNode: BatchNode,
-  actionNode: ActionNode
+  actionNode: ActionNode,
+  compositeNode: CompositeNode
 };
 
 export function WorkflowCanvas() {
@@ -26,19 +29,20 @@ export function WorkflowCanvas() {
     onConnect,
     selectNode,
     selectedNodeId,
+    selectEdge,
+    selectedEdgeId,
     activeEdgeIds
   } = useWorkflowStore();
 
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   const focusedNodeId = hoveredNodeId || selectedNodeId;
   const focusedEdgeId = hoveredEdgeId || selectedEdgeId;
   const hasFocus = Boolean(focusedNodeId || focusedEdgeId);
   const isTraceMode = activeEdgeIds.length > 0;
 
-  const styledEdges = edges.map((edge) => {
+  const styledEdges = edges.map((edge: Edge) => {
     // 1. 沙盒决策执行追踪高亮
     if (isTraceMode) {
       const isTraceActive = activeEdgeIds.includes(edge.id);
@@ -106,15 +110,31 @@ export function WorkflowCanvas() {
 
     // 3. 默认静态半透明淡化（消除大面积密集连线的杂乱视觉）
     const baseStroke = (edge.style?.stroke as string) || '#64748B';
+    const edgeData = edge.data as any;
+    const gate = edgeData?.confidenceGate;
+    let gateLabel = '';
+    if (gate?.enabled) {
+      if (gate.operator === 'range' && gate.range) {
+        gateLabel = `conf: ${gate.range[0].toFixed(2)}~${gate.range[1].toFixed(2)}`;
+      } else {
+        gateLabel = `conf ${gate.operator || '>='} ${(gate.threshold ?? 0.85).toFixed(2)}`;
+      }
+    }
+    const finalLabel = edgeData?.label ? `${edgeData.label} [${gateLabel}]` : gateLabel;
+
     return {
       ...edge,
+      label: finalLabel || edge.label,
+      labelStyle: { fill: '#F472B6', fontSize: 10, fontFamily: 'monospace', fontWeight: 600 },
+      labelBgStyle: { fill: '#141724', fillOpacity: 0.9, stroke: '#DB2777', strokeWidth: 1, rx: 4, ry: 4 },
+      labelBgPadding: [4, 2] as [number, number],
       animated: false,
       zIndex: 2,
       style: {
         ...edge.style,
         stroke: baseStroke,
         strokeWidth: 1.5,
-        opacity: 0.22
+        opacity: 0.3
       }
     };
   });
@@ -139,10 +159,10 @@ export function WorkflowCanvas() {
         onNodeMouseLeave={() => setHoveredNodeId(null)}
         onEdgeMouseEnter={(_, edge) => setHoveredEdgeId(edge.id)}
         onEdgeMouseLeave={() => setHoveredEdgeId(null)}
-        onEdgeClick={(_, edge) => setSelectedEdgeId(edge.id)}
+        onEdgeClick={(_, edge) => selectEdge(edge.id)}
         onPaneClick={() => {
           selectNode(null);
-          setSelectedEdgeId(null);
+          selectEdge(null);
         }}
         defaultEdgeOptions={{ type: 'smoothstep' }}
         fitView
@@ -157,7 +177,7 @@ export function WorkflowCanvas() {
           className="!bg-[#151821] !border !border-[#282D3D] !fill-gray-300"
         />
         <MiniMap
-          nodeColor={(node) => (node.type === 'batchNode' ? '#E551BA' : '#38BDF8')}
+          nodeColor={(node) => (node.type === 'batchNode' ? '#E551BA' : node.type === 'compositeNode' ? '#EC4899' : '#38BDF8')}
           maskColor="rgba(0, 0, 0, 0.7)"
           className="!bg-[#0F1118] !border !border-[#282D3D]"
         />
