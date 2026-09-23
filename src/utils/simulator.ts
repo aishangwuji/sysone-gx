@@ -1,6 +1,7 @@
 import { Node, Edge } from '@xyflow/react';
-import { BatchNodeData, Question, NoulQuestion, SimulationTrace } from '../types/workflow';
+import { BatchNodeData, NoulQuestion, SimulationTrace } from '../types/workflow';
 import { DEFAULT_NOUL_YES, DEFAULT_NOUL_NO } from './constants';
+import { executeBatchDecision, ProviderConfig, DecisionExecutionResult } from './decisionService';
 
 /**
  * High-fidelity heuristic simulator for TypeSafe Jev model.
@@ -9,7 +10,8 @@ import { DEFAULT_NOUL_YES, DEFAULT_NOUL_NO } from './constants';
 export async function runWorkflowSimulation(
   nodes: Node[],
   edges: Edge[],
-  stateInput: string
+  stateInput: string,
+  providerConfig?: ProviderConfig
 ): Promise<{ trace: SimulationTrace; updatedNodes: Node[] }> {
   const visitedNodeIds: string[] = [];
   const activeEdgeIds: string[] = [];
@@ -30,6 +32,11 @@ export async function runWorkflowSimulation(
 
   let currentNode: Node | undefined = rootNode;
   let finalAction: SimulationTrace['finalAction'] | undefined = undefined;
+  let totalExecutionTime = 0;
+  let lastRawResponse = '';
+  let totalUsage: SimulationTrace['usage'] = undefined;
+  const rejectReasons: string[] = [];
+  const reviewReasons: string[] = [];
 
   logs.push({
     nodeId: rootNode.id,
@@ -37,7 +44,6 @@ export async function runWorkflowSimulation(
     message: 'Starting simulation evaluation at root: ' + (rootNode.data.title || rootNode.id)
   });
 
-  const stateLower = stateInput.toLowerCase();
   const maxSteps = 25;
   let stepCount = 0;
 
@@ -73,36 +79,74 @@ export async function runWorkflowSimulation(
 
     if (currentNode.type === 'batchNode') {
       const bData = currentNode.data as BatchNodeData;
-      const batchAnswers: Record<string, any> = {};
-      let lowestConfidence = 1.0;
-      const executionDuration = Math.floor(45 + Math.random() * 35);
+
+      let decisionResult: DecisionExecutionResult;
+      try {
+        decisionResult = await executeBatchDecision(
+          bData,
+          stateInput,
+          providerConfig || {
+            provider: 'local',
+            apiKey: '',
+            endpoint: '',
+            model: bData.model || 'jev-latest',
+            isDemoMode: true
+          }
+        );
+      } catch (err: any) {
+        logs.push({
+          nodeId: currentNode.id,
+          type: 'fallback',
+          message: `服务调用异常 (${err.message})，自动平滑切入本地高保真引擎`
+        });
+        decisionResult = await executeBatchDecision(
+          bData,
+          stateInput,
+          {
+            provider: 'local',
+            apiKey: '',
+            endpoint: '',
+            model: bData.model || 'jev-latest',
+            isDemoMode: true
+          }
+        );
+      }
+
+      totalExecutionTime += decisionResult.executionTimeMs;
+      lastRawResponse = decisionResult.rawResponse;
+      if (decisionResult.usage) {
+        totalUsage = decisionResult.usage;
+      }
+
+      const batchAnswers = decisionResult.answers;
+      Object.assign(answers, batchAnswers);
+
+      const providerLabel = decisionResult.provider === 'openrouter'
+        ? 'OpenRouter (Alpha)'
+        : decisionResult.provider === 'typesafe'
+        ? 'TypeSafe 官方'
+        : '本地高保真模拟';
 
       logs.push({
         nodeId: currentNode.id,
         type: 'info',
-        message: 'Simulating ' + bData.questions.length + ' parallel questions with System One (' + bData.model + ')...'
+        message: `[${providerLabel}] 执行 ${bData.questions.length} 个并行问询 (${decisionResult.modelUsed}) · 耗时 ${decisionResult.executionTimeMs}ms${decisionResult.isDemo ? ' · 纯前端演示' : ''}`
       });
 
       for (const q of bData.questions) {
-        const qAns = simulateSingleQuestion(q, stateLower);
-        batchAnswers[q.id] = qAns;
-        answers[q.id] = qAns;
-
-        if (qAns.confidence !== undefined && (lowestConfidence === undefined || qAns.confidence < lowestConfidence)) {
-          lowestConfidence = qAns.confidence;
-        }
-
-        const resSummary = q.type === 'choice' ? qAns.choice : q.type === 'score' ? qAns.score.toFixed(2) : (qAns.noul * 100).toFixed(0) + '%';
+        const qAns = batchAnswers[q.id];
+        if (!qAns) continue;
+        const resSummary = q.type === 'choice' ? qAns.choice : q.type === 'score' ? (qAns.score !== undefined ? qAns.score.toFixed(2) : '') : (qAns.noul !== undefined ? (qAns.noul * 100).toFixed(0) + '%' : '');
         const confSummary = q.type === 'noul'
-          ? ' (Calibrated P: ' + (qAns.noul * 100).toFixed(0) + '%)'
+          ? ' (校准概率 P: ' + ((qAns.noul ?? 0) * 100).toFixed(0) + '%)'
           : qAns.confidence !== undefined
-            ? ' (Confidence: ' + qAns.confidence.toFixed(2) + ')'
+            ? ' (置信度: ' + qAns.confidence.toFixed(2) + ')'
             : '';
 
         logs.push({
           nodeId: currentNode.id,
           type: 'decision',
-          message: 'Question [' + q.id + ' (' + q.type + ')]: Result = ' + resSummary + confSummary
+          message: '问询 [' + q.id + ' (' + q.type + ')]: 评估结论 = ' + resSummary + confSummary
         });
       }
 
@@ -111,9 +155,6 @@ export async function runWorkflowSimulation(
       const [confMin, confMax] = confRange;
       const hasFallbackEdge = edges.find((e) => e.source === currentNode?.id && e.sourceHandle === 'fallback_handle');
 
-      // Check if ANY question in the batch triggers guardrail fallback:
-      // 1. For choice / score: confidence falls into the uncertain range [confMin, confMax]
-      // 2. For noul: calibrated probability noul falls into the uncertain range [confMin, confMax] (e.g. 0.30 ~ 0.70)
       let fallbackTriggered = false;
       let fallbackLogReason = '';
 
@@ -138,6 +179,7 @@ export async function runWorkflowSimulation(
       }
 
       if (bData.enableConfidenceFallback && fallbackTriggered && hasFallbackEdge) {
+        reviewReasons.push(fallbackLogReason);
         logs.push({
           nodeId: currentNode.id,
           type: 'fallback',
@@ -159,11 +201,21 @@ export async function runWorkflowSimulation(
               if (matchedQ.type === 'choice' && qAns?.choice === optionKey) {
                 activeEdgeIds.push(edge.id);
                 nextNode = nodeMap.get(edge.target);
+                if (edge.target.includes('reject')) {
+                  rejectReasons.push(`命中违规分类 [${matchedQ.id}]: 归类为 ${optionKey}`);
+                } else if (edge.target.includes('review')) {
+                  reviewReasons.push(`命中送审分类 [${matchedQ.id}]: 归类为 ${optionKey}`);
+                }
                 break;
               } else if (matchedQ.type === 'score') {
                 if (Math.round(qAns?.score) === parseInt(optionKey, 10)) {
                   activeEdgeIds.push(edge.id);
                   nextNode = nodeMap.get(edge.target);
+                  if (edge.target.includes('reject')) {
+                    rejectReasons.push(`评分超标 [${matchedQ.id}]: 档位 ${optionKey}`);
+                  } else if (edge.target.includes('review')) {
+                    reviewReasons.push(`评分存疑 [${matchedQ.id}]: 档位 ${optionKey}`);
+                  }
                   break;
                 }
               } else if (matchedQ.type === 'noul') {
@@ -173,6 +225,9 @@ export async function runWorkflowSimulation(
                 if ((optionKey === 'yes' && (qAns?.noul ?? 0) >= yesT) || (optionKey === 'no' && (qAns?.noul ?? 0) <= noT)) {
                   activeEdgeIds.push(edge.id);
                   nextNode = nodeMap.get(edge.target);
+                  if (optionKey === 'yes' && edge.target.includes('reject')) {
+                    rejectReasons.push(`命中高概率违规 [${matchedQ.id}]: 概率 ${((qAns?.noul ?? 0) * 100).toFixed(0)}% (>= ${(yesT * 100).toFixed(0)}%)`);
+                  }
                   break;
                 }
               }
@@ -192,13 +247,15 @@ export async function runWorkflowSimulation(
         simulationResult: {
           answers: batchAnswers,
           status: 'passed',
-          executionTimeMs: executionDuration || Math.floor(60 + Math.random() * 50)
+          executionTimeMs: decisionResult.executionTimeMs
         }
       };
 
       currentNode = nextNode;
     }
   }
+
+  const suggestedAction = finalAction?.title || (rejectReasons.length > 0 ? '建议拦截' : reviewReasons.length > 0 ? '建议人工复核' : '建议放行通过');
 
   return {
     trace: {
@@ -207,155 +264,15 @@ export async function runWorkflowSimulation(
       activeEdgeIds,
       answers,
       finalAction,
+      provider: providerConfig?.provider || 'local',
+      executionTimeMs: totalExecutionTime || 45,
+      rawResponse: lastRawResponse,
+      usage: totalUsage,
+      suggestedAction,
+      rejectReasons,
+      reviewReasons,
       logs
     },
     updatedNodes
   };
-}
-
-function simulateSingleQuestion(q: Question, stateLower: string): any {
-  if (q.type === 'choice') {
-    const options = Object.keys(q.criteria);
-    const rawScores: Record<string, number> = {};
-    let totalScore = 0;
-
-    for (const opt of options) {
-      const descObj = q.criteria[opt];
-      let matchScore = 0.05;
-
-      const optKeywords = [opt.replace('_', ' ')];
-      if (typeof descObj === 'string') {
-        optKeywords.push(...descObj.toLowerCase().split(/[ ,;.]+/));
-      } else if (Array.isArray(descObj)) {
-        descObj.forEach((item) => {
-          if (typeof item === 'string') optKeywords.push(...item.toLowerCase().split(/[ ,;.]+/));
-        });
-      } else if (descObj && typeof descObj === 'object') {
-        const obj = descObj as Record<string, any>;
-        if (typeof obj.what === 'string') optKeywords.push(...obj.what.toLowerCase().split(/[ ,;.]+/));
-        if (typeof obj.summary === 'string') optKeywords.push(...obj.summary.toLowerCase().split(/[ ,;.]+/));
-        if (Array.isArray(obj.examples)) {
-          obj.examples.forEach((ex: any) => {
-            if (typeof ex === 'string') optKeywords.push(...ex.toLowerCase().split(/[ ,;.]+/));
-          });
-        }
-      }
-
-      for (const kw of optKeywords) {
-        if (kw.length > 2 && stateLower.includes(kw)) {
-          matchScore += 2.0;
-        }
-      }
-      rawScores[opt] = matchScore;
-      totalScore += matchScore;
-    }
-
-    const probabilities: Record<string, number> = {};
-    let maxProb = 0;
-    let selectedChoice = options[0];
-    let sumChoiceP = 0;
-
-    for (let i = 0; i < options.length; i++) {
-      const opt = options[i];
-      if (i === options.length - 1) {
-        const remaining = parseFloat((1.0 - sumChoiceP).toFixed(2));
-        probabilities[opt] = Math.max(0, remaining);
-      } else {
-        const p = parseFloat((rawScores[opt] / totalScore).toFixed(2));
-        probabilities[opt] = p;
-        sumChoiceP += p;
-      }
-      if (probabilities[opt] > maxProb) {
-        maxProb = probabilities[opt];
-        selectedChoice = opt;
-      }
-    }
-
-    const confidence = parseFloat(Math.min(1.0, Math.max(0.1, (maxProb - 1 / options.length) / (1 - 1 / options.length))).toFixed(2));
-
-    return {
-      type: 'choice',
-      choice: selectedChoice,
-      confidence,
-      probabilities
-    };
-  } else if (q.type === 'score') {
-    const levels = q.criteria;
-    const count = Math.max(2, levels.length);
-    let estimatedLevel = 0;
-
-    const isHighSeverity = stateLower.includes('urgent') || stateLower.includes('immediately') || stateLower.includes('angry') || stateLower.includes('cancel') || stateLower.includes('right now') || stateLower.includes('two charges') || stateLower.includes('fail') || stateLower.includes('3 times');
-    const isMediumSeverity = stateLower.includes('wrong') || stateLower.includes('delay') || stateLower.includes('frustrated') || stateLower.includes('can i');
-    const isAmbiguous = stateLower.includes('maybe') || stateLower.includes('confused') || stateLower.includes('not sure');
-
-    if (isHighSeverity) {
-      estimatedLevel = count - 1;
-    } else if (isMediumSeverity) {
-      estimatedLevel = Math.min(count - 1, Math.max(0, Math.floor(count / 2)));
-    } else {
-      estimatedLevel = 0;
-    }
-
-    const peakProb = isAmbiguous ? 0.45 : (isHighSeverity ? 0.85 : 0.72);
-    const remainder = Math.max(0, 1.0 - peakProb);
-    const adjacentProb = parseFloat((remainder / (count > 2 ? 2 : 1)).toFixed(2));
-
-    const probabilities: Record<string, number> = {};
-    let sumScoreP = 0;
-
-    for (let i = 0; i < count; i++) {
-      if (i === count - 1) {
-        probabilities[String(i)] = parseFloat(Math.max(0, 1.0 - sumScoreP).toFixed(2));
-      } else {
-        let p = 0.0;
-        if (i === estimatedLevel) {
-          p = peakProb;
-        } else if (Math.abs(i - estimatedLevel) === 1) {
-          p = adjacentProb;
-        }
-        probabilities[String(i)] = p;
-        sumScoreP += p;
-      }
-    }
-
-    let calculatedScore = 0;
-    for (let i = 0; i < count; i++) {
-      calculatedScore += i * (probabilities[String(i)] || 0);
-    }
-
-    const sortedProbs = Object.values(probabilities).sort((a, b) => b - a);
-    const pTop = sortedProbs[0] || 0;
-    const pSecond = sortedProbs[1] || 0;
-    const scoreConfidence = parseFloat(Math.min(0.98, Math.max(0.15, (pTop - pSecond) + (pTop * 0.35))).toFixed(2));
-
-    const legend = levels.reduce<Record<string, string>>((acc, l, idx) => {
-      let desc = 'Level ' + idx;
-      if (typeof l === 'string') {
-        desc = l;
-      } else if (l && typeof l === 'object') {
-        desc = (l as any).summary || (l as any).what || ((l as any).signals ? (l as any).signals.join(', ') : 'Level ' + idx);
-      }
-      return { ...acc, [String(idx)]: desc };
-    }, {});
-
-    return {
-      type: 'score',
-      score: parseFloat(calculatedScore.toFixed(2)),
-      confidence: scoreConfidence,
-      probabilities,
-      legend
-    };
-  } else {
-    let prob = 0.08;
-    if (stateLower.includes('human') || stateLower.includes('agent') || stateLower.includes('person') || stateLower.includes('talk') || stateLower.includes('representative')) {
-      prob = 0.96;
-    } else if (stateLower.includes('wait') || stateLower.includes('please') || stateLower.includes('contacted')) {
-      prob = 0.52;
-    }
-
-    return {
-      type: 'noul',
-      noul: prob
-    };
-  }
 }

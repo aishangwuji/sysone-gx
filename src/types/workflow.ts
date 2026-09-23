@@ -97,6 +97,17 @@ export interface SimulationTrace {
     title: string;
     actionType: string;
   };
+  provider?: 'local' | 'openrouter' | 'typesafe';
+  executionTimeMs?: number;
+  rawResponse?: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    cost?: number;
+  };
+  suggestedAction?: string;
+  rejectReasons?: string[];
+  reviewReasons?: string[];
   logs: Array<{
     nodeId: string;
     type: 'info' | 'decision' | 'fallback' | 'action';
