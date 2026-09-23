@@ -189,3 +189,57 @@ export function generateOpenRouterCode(nodes: Node[], _edges: Edge[]): string {
 
   return code;
 }
+
+export function generateJevPayloadCode(nodes: Node[], _edges: Edge[]): string {
+  const batchNodes = nodes.filter((node) => node.type === 'batchNode');
+  if (batchNodes.length === 0) {
+    return JSON.stringify(
+      {
+        model: 'jev-latest',
+        state: {
+          content: '示例正文内容快照 (由 Jev 上下文注入)',
+        },
+        questions: {},
+      },
+      null,
+      2
+    );
+  }
+
+  const questionsPayload: Record<string, any> = {};
+  let modelName = 'jev-latest';
+
+  batchNodes.forEach((bNode) => {
+    const bData = bNode.data as BatchNodeData;
+    if (bData.model) modelName = bData.model;
+    if (Array.isArray(bData.questions)) {
+      bData.questions.forEach((q) => {
+        const qPayload: Record<string, any> = {
+          type: q.type,
+          instructions: q.instructions,
+        };
+        if (q.type === 'noul') {
+          if (q.thresholds) {
+            qPayload.thresholds = q.thresholds;
+          }
+          if (q.criteria?.true || q.criteria?.false) {
+            qPayload.criteria = q.criteria;
+          }
+        } else if (q.criteria !== undefined) {
+          qPayload.criteria = q.criteria;
+        }
+        questionsPayload[q.id] = qPayload;
+      });
+    }
+  });
+
+  const payload = {
+    model: resolveNativeModel(modelName),
+    state: {
+      content: '示例正文内容快照 (由 Jev 上下文注入)',
+    },
+    questions: questionsPayload,
+  };
+
+  return JSON.stringify(payload, null, 2);
+}

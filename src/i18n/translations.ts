@@ -10,7 +10,9 @@ export const translations = {
     header: {
       addBatch: "+ Eval Batch",
       addAction: "+ Action Node",
-      exportCode: "Export SDK Code",
+      importWorkflow: "Import Workflow",
+      exportWorkflow: "Export Workflow",
+      exportCode: "Export Workflow",
       switchLang: "Language",
       langName: "English"
     },
@@ -91,14 +93,27 @@ export const translations = {
       emptyInputError: "Please enter state content before running simulation."
     },
     exportModal: {
-      title: "Export Production Code",
-      subtitle: "Native integration code for TypeSafe System One SDK",
+      title: "Export Workflow & Code",
+      subtitle: "Native integration code and workflow DSL for TypeSafe System One",
+      tabJson: "Workflow DSL (JSON)",
+      tabPayload: "Jev Payload (JSON)",
       tabPython: "Python SDK (typesafe_sdk)",
       tabOpenRouter: "OpenRouter Decisions (Alpha)",
       tabTs: "TypeScript / Node.js",
-      tabJson: "Workflow DSL (JSON)",
-      copyBtn: "Copy Code",
-      copiedBtn: "Copied to Clipboard!"
+      copyBtn: "Copy",
+      copiedBtn: "Copied!",
+      downloadBtn: "Download File",
+      downloadedBtn: "Downloaded!",
+      closeBtn: "Close"
+    },
+    importModal: {
+      title: "Import Decision Workflow",
+      badge: "Visual Graph Loader",
+      subtitle: "Import bbs-go rules, Jev payload, or SysOne GX DSL and visualize decision logic on the canvas.",
+      uploadFileBtn: "Select Local JSON File",
+      clearBtn: "Clear",
+      cancelBtn: "Cancel",
+      applyBtn: "Load into Visual Canvas"
     },
     auth: {
       loginTitle: "Sign In to SysOne GX",
@@ -158,7 +173,9 @@ export const translations = {
     header: {
       addBatch: "+ 评估批处理",
       addAction: "+ 动作节点",
-      exportCode: "导出 SDK 代码",
+      importWorkflow: "一键导入",
+      exportWorkflow: "一键导出",
+      exportCode: "一键导出",
       switchLang: "语言切换",
       langName: "简体中文"
     },
@@ -239,14 +256,27 @@ export const translations = {
       emptyInputError: "请先输入测试状态内容再运行仿真。"
     },
     exportModal: {
-      title: "导出生产级代码",
-      subtitle: "官方 TypeSafe System One SDK 原生集成代码",
+      title: "一键导出决策工作流与生产代码",
+      subtitle: "官方 TypeSafe System One SDK 原生集成代码与标准工作流 DSL",
+      tabJson: "工作流定义 DSL (JSON)",
+      tabPayload: "Jev 原生问询 Payload (JSON)",
       tabPython: "Python SDK (typesafe_sdk)",
       tabOpenRouter: "OpenRouter Decisions (Alpha)",
       tabTs: "TypeScript / Node.js",
-      tabJson: "工作流定义 DSL (JSON)",
       copyBtn: "复制代码",
-      copiedBtn: "已复制到剪贴板！"
+      copiedBtn: "已复制到剪贴板！",
+      downloadBtn: "下载文件",
+      downloadedBtn: "已下载！",
+      closeBtn: "关闭"
+    },
+    importModal: {
+      title: "一键导入决策工作流",
+      badge: "图形化流转映射",
+      subtitle: "支持 bbs-go 规则配置、Jev 原生 Payload 与 SysOne GX 工作流 DSL，导入后自动在画布直观呈现判定逻辑与分流分支。",
+      uploadFileBtn: "选择本地 JSON 文件",
+      clearBtn: "清空",
+      cancelBtn: "取消",
+      applyBtn: "确认导入至图形化画布"
     },
     auth: {
       loginTitle: "登录 SysOne GX 工作室",

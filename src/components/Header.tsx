@@ -5,7 +5,6 @@ import {
   Sparkles,
   Layers,
   ArrowRightCircle,
-  Code2,
   Globe,
   FolderKanban,
   Save,
@@ -13,9 +12,12 @@ import {
   LogOut,
   ChevronDown,
   Loader2,
-  Check
+  Check,
+  Upload,
+  Download
 } from "lucide-react";
 import { CodeExportModal } from "./Modals/CodeExportModal";
+import { ImportWorkflowModal } from "./Modals/ImportWorkflowModal";
 
 export function Header() {
   const {
@@ -38,6 +40,7 @@ export function Header() {
   } = useAuthStore();
 
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -149,14 +152,25 @@ export function Header() {
 
         <div className="h-5 w-px bg-[#282D3D] mx-0.5" />
 
-        {/* Code Export Button */}
-        <button
-          onClick={() => setIsExportOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#151822] hover:bg-[#1C212F] text-gray-200 border border-[#282D3D] text-xs font-semibold shadow-sm transition-colors"
-        >
-          <Code2 className="w-3.5 h-3.5 text-primary" />
-          {t.header.exportCode}
-        </button>
+        {/* Import & Export Workflow Buttons */}
+        <div className="flex items-center gap-1.5 bg-[#0F1118] p-1 rounded-lg border border-[#282D3D]">
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-[#151822] hover:bg-[#1C212F] text-emerald-400 border border-emerald-500/30 transition-colors shadow-sm"
+            title="一键导入 bbs-go 规则、Jev 原生 Payload 或工作流 DSL"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>{t.header.importWorkflow}</span>
+          </button>
+          <button
+            onClick={() => setIsExportOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-[#151822] hover:bg-[#1C212F] text-gray-200 border border-[#282D3D] transition-colors shadow-sm"
+            title="一键导出工作流 DSL、Jev 原生 Payload 与 SDK 代码"
+          >
+            <Download className="w-3.5 h-3.5 text-primary" />
+            <span>{t.header.exportWorkflow}</span>
+          </button>
+        </div>
 
         <div className="h-5 w-px bg-[#282D3D] mx-0.5" />
 
@@ -219,6 +233,11 @@ export function Header() {
       <CodeExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
+      />
+
+      <ImportWorkflowModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
       />
     </header>
   );

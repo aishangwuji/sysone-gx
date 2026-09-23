@@ -57,6 +57,7 @@ interface WorkflowState {
   deleteNode: (nodeId: string) => void;
   loadTemplate: (templateId: string) => void;
   clearSimulation: () => void;
+  importWorkflowData: (data: { nodes: Node[]; edges: Edge[]; stateInput?: string }) => void;
 }
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
@@ -462,6 +463,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         delete d.simulationResult;
         return { ...n, data: d };
       })
+    });
+  },
+
+  importWorkflowData: ({ nodes, edges, stateInput }) => {
+    set({
+      nodes,
+      edges,
+      selectedNodeId: nodes.length > 0 ? nodes[0].id : null,
+      selectedQuestionId: null,
+      simulationTrace: null,
+      activeEdgeIds: [],
+      activeNodeIds: [],
+      ...(stateInput ? { testStateInput: stateInput } : {})
     });
   }
 }));
