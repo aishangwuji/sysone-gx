@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -25,28 +25,108 @@ export function WorkflowCanvas() {
     onEdgesChange,
     onConnect,
     selectNode,
+    selectedNodeId,
     activeEdgeIds
   } = useWorkflowStore();
 
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+
+  const focusedNodeId = hoveredNodeId || selectedNodeId;
+  const focusedEdgeId = hoveredEdgeId || selectedEdgeId;
+  const hasFocus = Boolean(focusedNodeId || focusedEdgeId);
+  const isTraceMode = activeEdgeIds.length > 0;
+
   const styledEdges = edges.map((edge) => {
-    const isActive = activeEdgeIds.includes(edge.id);
-    if (isActive) {
+    // 1. 沙盒决策执行追踪高亮
+    if (isTraceMode) {
+      const isTraceActive = activeEdgeIds.includes(edge.id);
+      if (isTraceActive) {
+        return {
+          ...edge,
+          animated: true,
+          zIndex: 20,
+          style: {
+            ...edge.style,
+            stroke: '#10B981',
+            strokeWidth: 3,
+            opacity: 1,
+            filter: 'drop-shadow(0 0 8px #10B981)'
+          }
+        };
+      }
       return {
         ...edge,
-        animated: true,
+        animated: false,
+        zIndex: 1,
         style: {
           ...edge.style,
-          stroke: '#10B981',
-          strokeWidth: 3,
-          filter: 'drop-shadow(0 0 8px #10B981)'
+          strokeWidth: 1,
+          opacity: 0.08
         }
       };
     }
-    return edge;
+
+    // 2. 鼠标悬浮/选中聚焦高亮
+    if (hasFocus) {
+      const isConnected = focusedNodeId
+        ? edge.source === focusedNodeId || edge.target === focusedNodeId
+        : false;
+      const isEdgeFocused = focusedEdgeId === edge.id;
+
+      if (isConnected || isEdgeFocused) {
+        const baseStroke = (edge.style?.stroke as string) || '#818CF8';
+        return {
+          ...edge,
+          animated: true,
+          zIndex: 15,
+          style: {
+            ...edge.style,
+            stroke: baseStroke,
+            strokeWidth: isEdgeFocused ? 3 : 2.5,
+            opacity: 1,
+            filter: `drop-shadow(0 0 6px ${baseStroke})`
+          }
+        };
+      }
+
+      // 非当前焦点的其它连线深度淡化
+      return {
+        ...edge,
+        animated: false,
+        zIndex: 1,
+        style: {
+          ...edge.style,
+          strokeWidth: 1,
+          opacity: 0.06
+        }
+      };
+    }
+
+    // 3. 默认静态半透明淡化（消除大面积密集连线的杂乱视觉）
+    const baseStroke = (edge.style?.stroke as string) || '#64748B';
+    return {
+      ...edge,
+      animated: false,
+      zIndex: 2,
+      style: {
+        ...edge.style,
+        stroke: baseStroke,
+        strokeWidth: 1.5,
+        opacity: 0.22
+      }
+    };
   });
 
   return (
     <div className="w-full h-full relative bg-[#0B0D13]">
+      <style>{`
+        .react-flow__edge-path {
+          transition: stroke-width 0.22s ease, opacity 0.22s ease, stroke 0.22s ease, filter 0.22s ease;
+        }
+      `}</style>
+
       <ReactFlow
         nodes={nodes}
         edges={styledEdges}
@@ -55,7 +135,15 @@ export function WorkflowCanvas() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         connectionMode={ConnectionMode.Loose}
-        onPaneClick={() => selectNode(null)}
+        onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
+        onNodeMouseLeave={() => setHoveredNodeId(null)}
+        onEdgeMouseEnter={(_, edge) => setHoveredEdgeId(edge.id)}
+        onEdgeMouseLeave={() => setHoveredEdgeId(null)}
+        onEdgeClick={(_, edge) => setSelectedEdgeId(edge.id)}
+        onPaneClick={() => {
+          selectNode(null);
+          setSelectedEdgeId(null);
+        }}
         defaultEdgeOptions={{ type: 'smoothstep' }}
         fitView
       >
