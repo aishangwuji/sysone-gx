@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useWorkflowStore } from "../store/useWorkflowStore";
 import { useAuthStore } from "../store/useAuthStore";
 import {
-  Sparkles,
   Layers,
   ArrowRightCircle,
   Globe,
@@ -63,10 +62,12 @@ export function Header() {
       {/* Left: Brand & Project Selector */}
       <div className="flex items-center gap-3">
         {/* Logo & Brand */}
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-primary/20 text-primary border border-primary/30 flex items-center justify-center">
-            <Sparkles className="w-4 h-4" />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <img
+            src="/logo.webp"
+            alt="SysOne GX"
+            className="w-7 h-7 rounded-md object-contain border border-[#2B3145]/60 bg-[#161924]/60 p-0.5"
+          />
           <span className="font-bold text-sm tracking-tight text-white">{t.app.title}</span>
         </div>
 

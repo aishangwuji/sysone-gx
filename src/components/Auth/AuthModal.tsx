@@ -69,13 +69,20 @@ export function AuthModal() {
       <div className="w-full max-w-md bg-[#121520] border border-[#282D3D] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="p-5 bg-[#151821] border-b border-[#282D3D] flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-gray-100">
-              {authModalTab === 'login' ? t.auth.loginTitle : t.auth.registerTitle}
-            </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {authModalTab === 'login' ? 'SysOne GX 决策模型可视化工作室' : '注册即享决策树云端多项目管理'}
-            </p>
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.webp"
+              alt="SysOne GX"
+              className="w-9 h-9 rounded-lg object-contain border border-[#282D3D] bg-[#0E1017] p-1"
+            />
+            <div>
+              <h3 className="text-base font-bold text-gray-100">
+                {authModalTab === 'login' ? t.auth.loginTitle : t.auth.registerTitle}
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {authModalTab === 'login' ? 'SysOne GX 决策模型可视化工作室' : '注册即享决策树云端多项目管理'}
+              </p>
+            </div>
           </div>
           <button
             onClick={closeAuthModal}
