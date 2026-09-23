@@ -77,20 +77,18 @@ export const translations = {
       mergeWithNode: "Merge Downstream Batch: {title}"
     },
     sandbox: {
-      title: "Live Sandbox & Simulator",
+      title: "Decision Sandbox",
       reset: "Reset",
-      apiKeyLabel: "OpenRouter API Key (Required for OpenRouter Live Call)",
-      apiKeyPlaceholder: "sk-or-v1-... (provide valid key for live model call)",
-      liveMode: "Live: typesafe/jev-latest",
-      simMode: "Local Offline Rule Engine",
-      stateInputLabel: "State (Text or JSON Content)",
-      statePlaceholder: "Paste test ticket, message, or JSON here...",
-      runBtn: "Run Decision Trace",
-      runningBtn: "Evaluating System One...",
+      apiKeyLabel: "API Key",
+      apiKeyPlaceholder: "sk-or-v1-...",
+      stateInputLabel: "State Input",
+      statePlaceholder: "Enter test ticket, text, or JSON...",
+      runBtn: "Execute Decision",
+      runningBtn: "Evaluating...",
       executionTrace: "Execution Trace",
       visitedCount: "Visited: {count} nodes",
-      noTraceYet: "No trace history yet. Click \"Run Decision Trace\" to observe path animation and probabilities.",
-      emptyInputError: "Please enter state content before running simulation."
+      noTraceYet: "No trace history yet.",
+      emptyInputError: "Please enter state content."
     },
     exportModal: {
       title: "Export Workflow & Code",
@@ -240,20 +238,18 @@ export const translations = {
       mergeWithNode: "合并下游批处理: {title}"
     },
     sandbox: {
-      title: "实时决策沙盒与仿真",
+      title: "决策沙盒",
       reset: "重置",
-      apiKeyLabel: "OpenRouter API Key (使用 OpenRouter 真实调用时必填)",
-      apiKeyPlaceholder: "sk-or-v1-... (填入有效 Key 进行真实模型调用)",
-      liveMode: "真实 API 调用: typesafe/jev-latest",
-      simMode: "本地离线规则引擎",
-      stateInputLabel: "输入状态 (用户文本或 JSON)",
-      statePlaceholder: "在此粘贴测试工单、客户消息或 JSON 内容...",
-      runBtn: "运行决策追踪",
-      runningBtn: "System One 正在评估...",
-      executionTrace: "决策执行追踪",
+      apiKeyLabel: "API Key",
+      apiKeyPlaceholder: "sk-or-v1-...",
+      stateInputLabel: "输入状态",
+      statePlaceholder: "输入测试工单、文本或 JSON...",
+      runBtn: "执行决策",
+      runningBtn: "正在评估...",
+      executionTrace: "执行追踪",
       visitedCount: "已流经: {count} 个节点",
-      noTraceYet: "暂无执行追踪记录。点击 \"运行决策追踪\" 即可查看路径动画与概率分布。",
-      emptyInputError: "请先输入测试状态内容再运行仿真。"
+      noTraceYet: "暂无执行追踪记录。",
+      emptyInputError: "请先输入测试状态内容。"
     },
     exportModal: {
       title: "一键导出决策工作流与生产代码",

@@ -80,15 +80,14 @@ export async function runWorkflowSimulation(
     if (currentNode.type === 'batchNode') {
       const bData = currentNode.data as BatchNodeData;
 
+      if (!providerConfig) {
+        throw new Error('未指定服务商配置 (请选择 OpenRouter 或 TypeSafe)');
+      }
+
       const decisionResult = await executeBatchDecision(
         bData,
         stateInput,
-        providerConfig || {
-          provider: 'local',
-          apiKey: '',
-          endpoint: '',
-          model: bData.model || 'jev-latest',
-        }
+        providerConfig
       );
 
       totalExecutionTime += decisionResult.executionTimeMs;
@@ -100,16 +99,12 @@ export async function runWorkflowSimulation(
       const batchAnswers = decisionResult.answers;
       Object.assign(answers, batchAnswers);
 
-      const providerLabel = decisionResult.provider === 'openrouter'
-        ? 'OpenRouter (真实调用)'
-        : decisionResult.provider === 'typesafe'
-        ? 'TypeSafe 官方 (真实调用)'
-        : '本地离线规则评估';
+      const providerLabel = decisionResult.provider === 'openrouter' ? 'OpenRouter' : 'TypeSafe';
 
       logs.push({
         nodeId: currentNode.id,
         type: 'info',
-        message: `[${providerLabel}] 执行 ${bData.questions.length} 个并行问询 (${decisionResult.modelUsed}) · 耗时 ${decisionResult.executionTimeMs}ms`
+        message: `[${providerLabel}] 执行 ${bData.questions.length} 个问询 (${decisionResult.modelUsed}) · 耗时 ${decisionResult.executionTimeMs}ms`
       });
 
       for (const q of bData.questions) {
