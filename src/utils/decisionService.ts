@@ -16,7 +16,7 @@ export const DEFAULT_PROVIDER_CONFIG: Record<
 > = {
   openrouter: {
     endpoint: 'https://openrouter.ai/api/alpha/decisions',
-    model: 'typesafe/jev-latest',
+    model: 'jev-latest',
     placeholderKey: 'sk-or-v1-...',
     docUrl: 'https://openrouter.ai/docs#decisions',
   },
@@ -64,7 +64,7 @@ export async function pingProvider(config: ProviderConfig): Promise<{
     const endpoint = config.endpoint || DEFAULT_PROVIDER_CONFIG[config.provider].endpoint;
     const modelName =
       config.provider === 'openrouter'
-        ? resolveOpenRouterModel(config.model || 'typesafe/jev-latest')
+        ? resolveOpenRouterModel(config.model || 'jev-latest')
         : resolveNativeModel(config.model || 'jev-latest');
 
     const headers: Record<string, string> = {
@@ -144,7 +144,7 @@ export async function executeBatchDecision(
   const endpoint = config.endpoint || DEFAULT_PROVIDER_CONFIG[config.provider].endpoint;
   const modelUsed =
     config.provider === 'openrouter'
-      ? resolveOpenRouterModel(config.model || batchData.model || 'typesafe/jev-latest')
+      ? resolveOpenRouterModel(config.model || batchData.model || 'jev-latest')
       : resolveNativeModel(config.model || batchData.model || 'jev-latest');
 
   const questionsPayload: Record<string, any> = {};

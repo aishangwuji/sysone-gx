@@ -4,7 +4,6 @@ export const translations = {
   en: {
     app: {
       title: "SysOne GX",
-      badge: "System One Studio",
       subtitle: "Visual Choice, Score & Noul Decision Trees for Jev"
     },
     header: {
@@ -165,7 +164,6 @@ export const translations = {
   zh: {
     app: {
       title: "SysOne GX",
-      badge: "System One 工作台",
       subtitle: "专为 Jev 模型打造的 Choice、Score 与 Noul 可视化决策树工作流"
     },
     header: {

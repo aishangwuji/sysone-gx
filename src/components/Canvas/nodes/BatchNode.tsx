@@ -204,9 +204,9 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-0.5">
-                    <div className="relative flex items-center gap-1">
-                      <span className="text-[11px] text-emerald-400 font-semibold">
+                  <div className="space-y-1 mt-1 pt-1">
+                    <div className="flex items-center justify-between text-[11px] py-0.5 px-1.5 rounded relative group hover:bg-[#202535]">
+                      <span className="text-emerald-400 font-medium">
                         {t.canvas.yesThreshold.replace('{val}', String((q as NoulQuestion).thresholds?.yes ?? DEFAULT_NOUL_YES))}
                       </span>
                       <Handle
@@ -216,8 +216,8 @@ export const BatchNode = memo(({ id, data }: NodeProps) => {
                         className="!w-2.5 !h-2.5 !bg-emerald-400 !border-2 !border-[#12141C] -mr-3"
                       />
                     </div>
-                    <div className="relative flex items-center gap-1">
-                      <span className="text-[11px] text-rose-400 font-semibold">
+                    <div className="flex items-center justify-between text-[11px] py-0.5 px-1.5 rounded relative group hover:bg-[#202535]">
+                      <span className="text-rose-400 font-medium">
                         {t.canvas.noThreshold.replace('{val}', String((q as NoulQuestion).thresholds?.no ?? DEFAULT_NOUL_NO))}
                       </span>
                       <Handle
