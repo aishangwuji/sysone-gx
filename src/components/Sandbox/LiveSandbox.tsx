@@ -45,8 +45,19 @@ export function LiveSandbox() {
     t,
   } = useWorkflowStore();
 
+  const STORAGE_KEYS: Record<ProviderType, string> = {
+    openrouter: 'sysone_key_openrouter',
+    typesafe: 'sysone_key_typesafe',
+  };
+
   const [provider, setProvider] = useState<ProviderType>('openrouter');
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useState(() => {
+    try {
+      return localStorage.getItem('sysone_key_openrouter') || '';
+    } catch {
+      return '';
+    }
+  });
   const [showKey, setShowKey] = useState(false);
   const [endpoint, setEndpoint] = useState(DEFAULT_PROVIDER_CONFIG.openrouter.endpoint);
   const [model, setModel] = useState(DEFAULT_PROVIDER_CONFIG.openrouter.model);
@@ -69,6 +80,25 @@ export function LiveSandbox() {
     setModel(DEFAULT_PROVIDER_CONFIG[p].model);
     setPingResult(null);
     setErrorMsg(null);
+    try {
+      setApiKey(localStorage.getItem(STORAGE_KEYS[p]) || '');
+    } catch {
+      setApiKey('');
+    }
+  };
+
+  const handleApiKeyChange = (val: string) => {
+    setApiKey(val);
+    try {
+      const trimmed = val.trim();
+      if (trimmed) {
+        localStorage.setItem(STORAGE_KEYS[provider], trimmed);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS[provider]);
+      }
+    } catch {
+      // 忽略本地存储异常
+    }
   };
 
   const handlePingTest = async () => {
@@ -222,12 +252,24 @@ export function LiveSandbox() {
         {showConfig && (
           <div className="mt-2 pt-2 border-t border-[#232736] space-y-2 text-xs">
             <div>
-              <label className="block text-[11px] text-gray-400 mb-1">API Key:</label>
+              <div className="flex items-center justify-between mb-1 text-[11px] text-gray-400">
+                <span>API Key:</span>
+                {apiKey && (
+                  <button
+                    type="button"
+                    onClick={() => handleApiKeyChange('')}
+                    className="text-[10px] text-gray-500 hover:text-gray-300"
+                    title="清除保存在浏览器中的 Key"
+                  >
+                    清除本地
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <input
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => handleApiKeyChange(e.target.value)}
                   placeholder={DEFAULT_PROVIDER_CONFIG[provider].placeholderKey}
                   className="w-full bg-[#12141C] border border-[#2B3145] rounded px-2.5 py-1.5 pr-8 text-xs font-mono text-gray-200 focus:outline-none focus:border-primary"
                 />
