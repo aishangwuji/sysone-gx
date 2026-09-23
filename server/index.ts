@@ -47,7 +47,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-const server = app.listen(config.port, () => {
+const server = app.listen(config.port, "127.0.0.1", () => {
   console.log(`[SysOne GX Backend] listening on http://localhost:${config.port}`);
 });
 
