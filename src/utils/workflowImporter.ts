@@ -207,7 +207,7 @@ export function convertBbsGoConfig(data: any): ImportResult {
         type: 'actionNode',
         position: { x: 680, y: 80 },
         data: {
-          title: '🛑 违规直接拦截 (Auto Reject)',
+          title: '违规直接拦截 (Auto Reject)',
           actionType: 'return_response',
           config: {
             status: 'rejected',
@@ -220,7 +220,7 @@ export function convertBbsGoConfig(data: any): ImportResult {
         type: 'actionNode',
         position: { x: 680, y: 260 },
         data: {
-          title: '⚠️ 人工复核待审 (Human Review)',
+          title: '人工复核待审 (Human Review)',
           actionType: 'human_review',
           config: {
             team: '风控合规组',
@@ -233,7 +233,7 @@ export function convertBbsGoConfig(data: any): ImportResult {
         type: 'actionNode',
         position: { x: 680, y: 440 },
         data: {
-          title: '✅ 审核放行通过 (Auto Approve)',
+          title: '审核放行通过 (Auto Approve)',
           actionType: 'database_update',
           config: {
             status: 'approved',

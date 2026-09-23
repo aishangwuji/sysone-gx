@@ -202,28 +202,28 @@ export function ImportWorkflowModal({ isOpen, onClose }: ImportWorkflowModalProp
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                 <div className="p-2 rounded-lg bg-[#181C2A] border border-[#252B3D]">
-                  <div className="text-[10px] text-gray-400">🟣 Choice 分类问询</div>
+                  <div className="text-[10px] text-gray-400">Choice 分类问询</div>
                   <div className="text-base font-bold text-purple-300 font-mono mt-0.5">
                     {summary.choiceCount} <span className="text-xs font-normal text-gray-400">项</span>
                   </div>
                 </div>
 
                 <div className="p-2 rounded-lg bg-[#181C2A] border border-[#252B3D]">
-                  <div className="text-[10px] text-gray-400">🔵 Score 阶梯评分</div>
+                  <div className="text-[10px] text-gray-400">Score 阶梯评分</div>
                   <div className="text-base font-bold text-blue-300 font-mono mt-0.5">
                     {summary.scoreCount} <span className="text-xs font-normal text-gray-400">项</span>
                   </div>
                 </div>
 
                 <div className="p-2 rounded-lg bg-[#181C2A] border border-[#252B3D]">
-                  <div className="text-[10px] text-gray-400">🟢 Noul 概率校准</div>
+                  <div className="text-[10px] text-gray-400">Noul 概率校准</div>
                   <div className="text-base font-bold text-emerald-300 font-mono mt-0.5">
                     {summary.noulCount} <span className="text-xs font-normal text-gray-400">项</span>
                   </div>
                 </div>
 
                 <div className="p-2 rounded-lg bg-[#181C2A] border border-[#252B3D]">
-                  <div className="text-[10px] text-gray-400">🔀 决策分支连线</div>
+                  <div className="text-[10px] text-gray-400">决策分支连线</div>
                   <div className="text-base font-bold text-amber-300 font-mono mt-0.5">
                     {summary.edgeCount} <span className="text-xs font-normal text-gray-400">条</span>
                   </div>

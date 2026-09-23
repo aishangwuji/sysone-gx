@@ -1,7 +1,7 @@
 import { Node, Edge } from '@xyflow/react';
 import { BatchNodeData, NoulQuestion, SimulationTrace } from '../types/workflow';
 import { DEFAULT_NOUL_YES, DEFAULT_NOUL_NO } from './constants';
-import { executeBatchDecision, ProviderConfig, DecisionExecutionResult } from './decisionService';
+import { executeBatchDecision, ProviderConfig } from './decisionService';
 
 /**
  * High-fidelity heuristic simulator for TypeSafe Jev model.
@@ -80,37 +80,16 @@ export async function runWorkflowSimulation(
     if (currentNode.type === 'batchNode') {
       const bData = currentNode.data as BatchNodeData;
 
-      let decisionResult: DecisionExecutionResult;
-      try {
-        decisionResult = await executeBatchDecision(
-          bData,
-          stateInput,
-          providerConfig || {
-            provider: 'local',
-            apiKey: '',
-            endpoint: '',
-            model: bData.model || 'jev-latest',
-            isDemoMode: true
-          }
-        );
-      } catch (err: any) {
-        logs.push({
-          nodeId: currentNode.id,
-          type: 'fallback',
-          message: `服务调用异常 (${err.message})，自动平滑切入本地高保真引擎`
-        });
-        decisionResult = await executeBatchDecision(
-          bData,
-          stateInput,
-          {
-            provider: 'local',
-            apiKey: '',
-            endpoint: '',
-            model: bData.model || 'jev-latest',
-            isDemoMode: true
-          }
-        );
-      }
+      const decisionResult = await executeBatchDecision(
+        bData,
+        stateInput,
+        providerConfig || {
+          provider: 'local',
+          apiKey: '',
+          endpoint: '',
+          model: bData.model || 'jev-latest',
+        }
+      );
 
       totalExecutionTime += decisionResult.executionTimeMs;
       lastRawResponse = decisionResult.rawResponse;
@@ -122,15 +101,15 @@ export async function runWorkflowSimulation(
       Object.assign(answers, batchAnswers);
 
       const providerLabel = decisionResult.provider === 'openrouter'
-        ? 'OpenRouter (Alpha)'
+        ? 'OpenRouter (真实调用)'
         : decisionResult.provider === 'typesafe'
-        ? 'TypeSafe 官方'
-        : '本地高保真模拟';
+        ? 'TypeSafe 官方 (真实调用)'
+        : '本地离线规则评估';
 
       logs.push({
         nodeId: currentNode.id,
         type: 'info',
-        message: `[${providerLabel}] 执行 ${bData.questions.length} 个并行问询 (${decisionResult.modelUsed}) · 耗时 ${decisionResult.executionTimeMs}ms${decisionResult.isDemo ? ' · 纯前端演示' : ''}`
+        message: `[${providerLabel}] 执行 ${bData.questions.length} 个并行问询 (${decisionResult.modelUsed}) · 耗时 ${decisionResult.executionTimeMs}ms`
       });
 
       for (const q of bData.questions) {

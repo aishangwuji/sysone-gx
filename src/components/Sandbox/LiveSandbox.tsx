@@ -47,11 +47,10 @@ export function LiveSandbox() {
     t,
   } = useWorkflowStore();
 
-  // 服务商与演示配置
+  // 服务商与接入配置
   const [provider, setProvider] = useState<ProviderType>('openrouter');
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [isDemoMode, setIsDemoMode] = useState(true); // 默认开启纯前端演示
   const [endpoint, setEndpoint] = useState(DEFAULT_PROVIDER_CONFIG.openrouter.endpoint);
   const [model, setModel] = useState(DEFAULT_PROVIDER_CONFIG.openrouter.model);
   const [showConfig, setShowConfig] = useState(false);
@@ -73,9 +72,19 @@ export function LiveSandbox() {
     setEndpoint(DEFAULT_PROVIDER_CONFIG[p].endpoint);
     setModel(DEFAULT_PROVIDER_CONFIG[p].model);
     setPingResult(null);
+    setErrorMsg(null);
   };
 
   const handlePingTest = async () => {
+    if (provider !== 'local' && !apiKey.trim()) {
+      setPingResult({
+        success: false,
+        latencyMs: 0,
+        message: '请先填入有效的 API Key',
+      });
+      return;
+    }
+
     setPinging(true);
     setPingResult(null);
     try {
@@ -84,7 +93,6 @@ export function LiveSandbox() {
         apiKey,
         endpoint,
         model,
-        isDemoMode,
       };
       const res = await pingProvider(config);
       setPingResult(res);
@@ -105,6 +113,11 @@ export function LiveSandbox() {
       return;
     }
 
+    if (provider !== 'local' && !apiKey.trim()) {
+      setErrorMsg(`未配置 ${provider === 'openrouter' ? 'OpenRouter API Key (sk-or-v1-...)' : 'TypeSafe API Key'}。真实调用 Jev 模型必须提供有效密钥，或切换至本地离线评估。`);
+      return;
+    }
+
     setErrorMsg(null);
     setIsSimulating(true);
 
@@ -114,7 +127,6 @@ export function LiveSandbox() {
         apiKey,
         endpoint,
         model,
-        isDemoMode,
       };
 
       const { trace, updatedNodes } = await runWorkflowSimulation(
@@ -135,7 +147,7 @@ export function LiveSandbox() {
         });
       }
     } catch (err: any) {
-      setErrorMsg(err.message || '决策评估执行失败');
+      setErrorMsg(err.message || 'Jev 模型调用执行失败');
     } finally {
       setIsSimulating(false);
     }
@@ -166,7 +178,7 @@ export function LiveSandbox() {
         </button>
       </div>
 
-      {/* Provider Selector (参考 bbs-go) */}
+      {/* Provider Selector (对齐 bbs-go) */}
       <div className="mb-3 p-1.5 rounded-lg bg-[#0F1118] border border-[#282D3D] space-y-2 shrink-0">
         <div className="flex items-center justify-between text-[11px] text-gray-400 font-medium px-1">
           <span>服务商接入：</span>
@@ -175,7 +187,7 @@ export function LiveSandbox() {
             onClick={() => setShowConfig(!showConfig)}
             className="text-primary hover:underline flex items-center gap-0.5 text-[10px]"
           >
-            {showConfig ? '收起配置' : '展开参数'}
+            {showConfig ? '收起参数' : '展开参数'}
             {showConfig ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
         </div>
@@ -192,7 +204,7 @@ export function LiveSandbox() {
             )}
           >
             <Cpu className="w-3 h-3" />
-            <span>本地仿真</span>
+            <span>本地离线评估</span>
           </button>
 
           <button
@@ -206,7 +218,7 @@ export function LiveSandbox() {
             )}
           >
             <Zap className="w-3 h-3 text-purple-400" />
-            <span>OpenRouter</span>
+            <span>OpenRouter (真实)</span>
           </button>
 
           <button
@@ -220,35 +232,17 @@ export function LiveSandbox() {
             )}
           >
             <ShieldCheck className="w-3 h-3 text-sky-400" />
-            <span>TypeSafe 官方</span>
+            <span>TypeSafe 官方 (真实)</span>
           </button>
         </div>
 
         {/* Provider Config Details */}
         {showConfig && provider !== 'local' && (
           <div className="mt-2 pt-2 border-t border-[#232736] space-y-2 text-xs">
-            {/* Demo Mode Toggle */}
-            <div className="flex items-center justify-between p-1.5 rounded bg-[#151824] border border-[#2A3045]">
-              <span className="text-[11px] text-gray-300 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-primary" />
-                纯前端高保真演示模式
-              </span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isDemoMode}
-                  onChange={(e) => setIsDemoMode(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-7 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary"></div>
-              </label>
-            </div>
-
             {/* API Key Input */}
             <div>
               <div className="flex items-center justify-between mb-1 text-[11px] text-gray-400">
-                <span>API Key:</span>
-                {isDemoMode && <span className="text-primary text-[10px]">演示中 (留空自动 Mock)</span>}
+                <span>API Key (必填，真实请求 Jev 模型):</span>
               </div>
               <div className="relative">
                 <input
@@ -299,7 +293,7 @@ export function LiveSandbox() {
                 className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#202535] hover:bg-[#282E42] text-gray-300 text-[11px] font-medium border border-[#2F364C] transition-colors"
               >
                 <Activity className="w-3 h-3 text-sky-400" />
-                {pinging ? '测试连通性中...' : '测试接口连通性'}
+                {pinging ? '正在连接接口...' : '测试接口连通性'}
               </button>
 
               {pingResult && (
@@ -310,7 +304,7 @@ export function LiveSandbox() {
                   )}
                 >
                   {pingResult.success ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                  {pingResult.latencyMs}ms ({pingResult.success ? '就绪' : '失败'})
+                  {pingResult.latencyMs}ms ({pingResult.success ? '连通' : '报错'})
                 </span>
               )}
             </div>
@@ -330,7 +324,7 @@ export function LiveSandbox() {
         )}
       </div>
 
-      {/* Preset State Samples (参考 bbs-go 风控与工单场景) */}
+      {/* Preset State Samples */}
       <div className="mb-2 shrink-0">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[11px] font-medium text-gray-400">快速填入测试样本：</span>
@@ -372,7 +366,7 @@ export function LiveSandbox() {
           className="flex-1 py-2 px-4 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all cursor-pointer"
         >
           <Play className="w-3.5 h-3.5 fill-white" />
-          {isSimulating ? t.sandbox.runningBtn : '运行实时决策沙盒'}
+          {isSimulating ? t.sandbox.runningBtn : '运行真实决策调用'}
         </button>
       </div>
 
@@ -383,7 +377,7 @@ export function LiveSandbox() {
         </div>
       )}
 
-      {/* Decision Summary Card (参考 bbs-go Playground 结果展示) */}
+      {/* Decision Summary Card */}
       {simulationTrace && (
         <div className="mb-3 p-3 rounded-xl bg-gradient-to-br from-[#131724] to-[#0E1018] border border-[#2B3147] space-y-2.5 shrink-0">
           <div className="flex items-center justify-between border-b border-[#242A3D] pb-2">
@@ -446,7 +440,7 @@ export function LiveSandbox() {
           {/* Question Breakdown Bars */}
           {simulationTrace.answers && Object.keys(simulationTrace.answers).length > 0 && (
             <div className="pt-1.5 border-t border-[#23283B] space-y-2">
-              <div className="text-[10px] font-semibold text-gray-400">问询判定细项明细：</div>
+              <div className="text-[10px] font-semibold text-gray-400">问询判定明细：</div>
               <div className="space-y-1.5">
                 {Object.entries(simulationTrace.answers).map(([qKey, qVal]: [string, any]) => (
                   <div key={qKey} className="p-2 rounded bg-[#171B2A] border border-[#23283B] text-xs">
@@ -526,7 +520,7 @@ export function LiveSandbox() {
             </div>
           )}
 
-          {/* Raw Response Accordion (参考 bbs-go) */}
+          {/* Raw Response Accordion */}
           {simulationTrace.rawResponse && (
             <div className="pt-1 border-t border-[#23283B]">
               <button

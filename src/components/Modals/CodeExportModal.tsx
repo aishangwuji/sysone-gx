@@ -189,14 +189,14 @@ export function CodeExportModal({ isOpen, onClose }: CodeExportModalProps) {
         <div className="p-3 bg-[#151821] border-t border-[#282D3D] flex items-center justify-between text-xs text-gray-400">
           <p className="truncate max-w-[85%]">
             {activeTab === 'json'
-              ? '💡 导出的工作流 DSL 完整包含画布节点与拓扑连线，可直接用于在 SysOne GX 中随时“一键导入”无损还原。'
+              ? '导出的工作流 DSL 完整包含画布节点与拓扑连线，可直接用于在 SysOne GX 中随时“一键导入”无损还原。'
               : activeTab === 'payload'
-              ? '💡 导出的 Jev 原生 Payload 对应 POST /v1/systemone 接口请求体，可直接作为 bbs-go 或外部服务的评测配置。'
+              ? '导出的 Jev 原生 Payload 对应 POST /v1/systemone 接口请求体，可直接作为 bbs-go 或外部服务的评测配置。'
               : activeTab === 'python'
-              ? '💡 导出的 Python 代码基于 typesafe_sdk，可直接嵌入生产端后端服务执行推测并行问询。'
+              ? '导出的 Python 代码基于 typesafe_sdk，可直接嵌入生产端后端服务执行推测并行问询。'
               : activeTab === 'typescript'
-              ? '💡 导出的 TypeScript 包含标准 Fetch 调用逻辑与类型签名。'
-              : '💡 导出的 OpenRouter 代码使用 typesafe/jev-1.13 模型接入 Decisions Alpha 接口。'}
+              ? '导出的 TypeScript 包含标准 Fetch 调用逻辑与类型签名。'
+              : '导出的 OpenRouter 代码使用 typesafe/jev-1.13 模型接入 Decisions Alpha 接口。'}
           </p>
           <button
             onClick={onClose}
